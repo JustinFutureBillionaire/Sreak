@@ -1,5 +1,5 @@
 import { getCharacter } from "@/lib/characters";
-import { jev } from "@/lib/clients";
+import { jev, withRetry } from "@/lib/clients";
 
 // One short Jev check; the cap only guards against slow cold starts.
 export const maxDuration = 30;
@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   if (!character || !text) return Response.json({ error: "Need characterId and text." }, { status: 400 });
 
   try {
-    const { answers } = await jev().systemOne({
+    const { answers } = await withRetry(() => jev().systemOne({
       state: {
         situation: `A player is speaking out loud to ${character.brief.name} (${character.brief.role}) to persuade them. Speech is transcribed live and may lack punctuation.`,
         character_last_line: lastLine || character.brief.opening,
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
           },
         },
       },
-    });
+    }));
     return Response.json({ done: answers.done.noul >= 0.5, p: answers.done.noul });
   } catch (err) {
     console.error("Endpoint check failed", err);

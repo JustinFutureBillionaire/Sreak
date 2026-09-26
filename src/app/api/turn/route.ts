@@ -1,5 +1,5 @@
 import { getCharacter } from "@/lib/characters";
-import { jev } from "@/lib/clients";
+import { jev, why, withRetry } from "@/lib/clients";
 import { fallbackReply, streamReply } from "@/lib/dialogue";
 import { buildState, questionsFor, score, type Answers, type PastTurn } from "@/lib/engine";
 
@@ -26,14 +26,16 @@ export async function POST(req: Request) {
   const started = Date.now();
   let judged;
   try {
-    const { answers } = await jev().systemOne({
-      state: buildState(character, history, text),
-      questions: questionsFor(character.brief.mode),
-    });
+    const { answers } = await withRetry(() =>
+      jev().systemOne({
+        state: buildState(character, history, text),
+        questions: questionsFor(character.brief.mode),
+      }),
+    );
     judged = { ...score(character, answers as unknown as Answers, history), ms: Date.now() - started };
   } catch (err) {
     console.error("Jev failed", err);
-    return Response.json({ error: "Judge is unavailable, try again." }, { status: 502 });
+    return Response.json({ error: `Judge is unavailable (${why(err)}). Your line was kept, send it again.` }, { status: 502 });
   }
 
   const mood = {
@@ -45,13 +47,23 @@ export async function POST(req: Request) {
   const enc = new TextEncoder();
   const stream = new ReadableStream({
     async start(ctrl) {
-      const send = (o: object) => ctrl.enqueue(enc.encode(JSON.stringify(o) + "\n"));
+      // The browser can hang up mid-stream (navigation, retry); stop writing instead of throwing.
+      let open = true;
+      const send = (o: object) => {
+        if (!open) return;
+        try {
+          ctrl.enqueue(enc.encode(JSON.stringify(o) + "\n"));
+        } catch {
+          open = false;
+        }
+      };
       send({ type: "judge", ...judged });
       if (judged.voided) {
         send({ type: "reply", delta: "*frowns* Let's keep this about why you're here." });
       } else {
         try {
           for await (const chunk of await streamReply(character, history, text, mood)) {
+            if (!open) break;
             const delta = chunk.choices[0]?.delta?.content;
             if (delta) send({ type: "reply", delta });
           }
@@ -61,7 +73,7 @@ export async function POST(req: Request) {
         }
       }
       send({ type: "done" });
-      ctrl.close();
+      if (open) ctrl.close();
     },
   });
   return new Response(stream, { headers: { "Content-Type": "application/x-ndjson", "Cache-Control": "no-store" } });
