@@ -37,8 +37,8 @@ export default function Play({ g, stageId, onExit }: { g: Game; stageId: string;
   }
 
   const lastPlayer = g.turns.at(-1)?.player;
-  const lowTime = g.timeLeft <= 8;
-  const nervous = Math.max(1 - g.turnsLeft / b.turnLimit, lowTime ? 1 - g.timeLeft / 8 : 0);
+  const lowAt = Math.min(15, g.sessionSeconds / 3);
+  const nervous = g.timeLeft <= lowAt ? 1 - g.timeLeft / lowAt : 0;
   const locked = g.busy || g.streaming || !!g.outcome;
   const voice = useVoice({
     characterId: stageId,
@@ -106,7 +106,7 @@ export default function Play({ g, stageId, onExit }: { g: Game; stageId: string;
 
       {/* Input */}
       <form onSubmit={submit} className="flex items-center gap-3">
-        <TimerRing left={g.timeLeft} total={b.turnSeconds} paused={locked} />
+        <TimerRing left={g.timeLeft} total={g.sessionSeconds} paused={locked} lowAt={lowAt} />
         <MicButton status={voice.status} onClick={voice.toggle} />
         <input
           ref={inputRef}
@@ -123,7 +123,7 @@ export default function Play({ g, stageId, onExit }: { g: Game; stageId: string;
         </button>
       </form>
       <div className="flex items-center justify-between text-sm font-extrabold">
-        <Pips left={g.turnsLeft} total={b.turnLimit} />
+        <span>Turn {g.turnsUsed + 1}</span>
         <VoiceNote status={voice.status} />
         {g.error && <span className="text-tomato">{g.error}</span>}
       </div>
@@ -230,44 +230,31 @@ function TagBurst({ g }: { g: Game }) {
   );
 }
 
-function TimerRing({ left, total, paused }: { left: number; total: number; paused: boolean }) {
-  const r = 22;
+function TimerRing({ left, total, paused, lowAt }: { left: number; total: number; paused: boolean; lowAt: number }) {
+  const r = 26;
   const c = 2 * Math.PI * r;
-  const low = left <= 8 && !paused;
+  const low = left <= lowAt && !paused;
+  const label = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
   return (
     <motion.div
-      className="relative grid h-14 w-14 shrink-0 place-items-center"
+      className="relative grid h-16 w-16 shrink-0 place-items-center"
       animate={low ? { scale: [1, 1.12, 1] } : { scale: 1 }}
       transition={low ? { repeat: Infinity, duration: 0.6 } : {}}
-      aria-label={`${left} seconds left`}
+      aria-label={`${left} seconds left${paused ? ", paused" : ""}`}
     >
-      <svg viewBox="0 0 56 56" className="absolute inset-0 -rotate-90">
-        <circle cx={28} cy={28} r={r} fill="var(--paper)" stroke="var(--ink)" strokeWidth={4} />
+      <svg viewBox="0 0 64 64" className="absolute inset-0 -rotate-90">
+        <circle cx={32} cy={32} r={r} fill="var(--paper)" stroke="var(--ink)" strokeWidth={4} />
         <motion.circle
-          cx={28} cy={28} r={r} fill="none" strokeWidth={6} strokeLinecap="round"
+          cx={32} cy={32} r={r} fill="none" strokeWidth={6} strokeLinecap="round"
           stroke={low ? "var(--tomato)" : "var(--sky)"}
           strokeDasharray={c}
+          initial={false}
           animate={{ strokeDashoffset: c * (1 - left / total) }}
           transition={{ duration: 0.3 }}
         />
       </svg>
-      <span className="relative font-display text-lg">{left}</span>
+      <span className="relative font-display text-base" style={{ opacity: paused ? 0.5 : 1 }}>{label}</span>
     </motion.div>
-  );
-}
-
-function Pips({ left, total }: { left: number; total: number }) {
-  return (
-    <div className="flex items-center gap-1.5" aria-label={`${left} of ${total} turns left`}>
-      {Array.from({ length: total }, (_, i) => (
-        <motion.span
-          key={i}
-          className="h-3.5 w-3.5 rounded-full border-[3px] border-ink"
-          animate={{ background: i < left ? "var(--bubble)" : "var(--paper)", scale: i < left ? 1 : 0.8 }}
-        />
-      ))}
-      <span className="ml-1">{left} turns left</span>
-    </div>
   );
 }
 

@@ -35,11 +35,9 @@ export async function POST(req: Request) {
     return Response.json({ error: "Judge is unavailable, try again." }, { status: 502 });
   }
 
-  const used = history.length + (judged.voided ? 0 : 1);
   const mood = {
     progress: clamp(num(body?.progress) + judged.progress),
     risk: clamp(num(body?.risk) + judged.risk),
-    turnsLeft: character.brief.turnLimit - used,
     event: judged.event,
   };
 

@@ -6,14 +6,13 @@ export const openai = new OpenAI();
 export const DIALOGUE_MODEL = "gpt-5-nano";
 export const REPORT_MODEL = "gpt-5-mini";
 
-type Mood = { progress: number; risk: number; turnsLeft: number; event: string };
+type Mood = { progress: number; risk: number; event: string };
 
 function systemPrompt(c: Character, m: Mood) {
   const b = c.brief;
   const state =
     m.progress >= 100 ? `You are convinced. Give in and say yes, in your own words (${b.progressLabel} is full).`
     : m.risk >= 100 ? `You have had enough. Refuse firmly and end the conversation (${b.riskLabel} is maxed).`
-    : m.turnsLeft <= 0 ? "Time is up. Politely end the conversation without agreeing."
     : `Your inner state (never state numbers): ${b.progressLabel} ${m.progress}/100, ${b.riskLabel} ${m.risk}/100. Higher ${b.progressLabel} means you are warming up; higher ${b.riskLabel} means you are more guarded.`;
   const react = {
     critical: "The player just touched on what you are secretly worried about. Let it visibly land on you.",
@@ -56,7 +55,7 @@ export function streamReply(c: Character, history: PastTurn[], text: string, moo
 export function fallbackReply(c: Character, mood: Mood) {
   const f = c.fallback;
   if (mood.progress >= 100) return f.win;
-  if (mood.risk >= 100 || mood.turnsLeft <= 0) return f.lose;
+  if (mood.risk >= 100) return f.lose;
   if (mood.event === "foul") return f.foul;
   return mood.progress >= mood.risk ? f.warm : f.cold;
 }

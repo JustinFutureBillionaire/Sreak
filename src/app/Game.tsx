@@ -6,7 +6,7 @@ import { Briefing, Home } from "@/components/Home";
 import Play from "@/components/Play";
 import { useGame, type Stage } from "./useGame";
 
-type Screen = { name: "home" } | { name: "brief"; stage: Stage } | { name: "play"; stage: Stage };
+type Screen = { name: "home" } | { name: "brief"; stage: Stage } | { name: "play"; stage: Stage; seconds: number };
 
 export default function Game({ stages }: { stages: Stage[] }) {
   const [screen, setScreen] = useState<Screen>({ name: "home" });
@@ -23,15 +23,15 @@ export default function Game({ stages }: { stages: Stage[] }) {
       >
         {screen.name === "home" && <Home stages={stages} onPick={(stage) => setScreen({ name: "brief", stage })} />}
         {screen.name === "brief" && (
-          <Briefing stage={screen.stage} onBack={home} onStart={() => setScreen({ name: "play", stage: screen.stage })} />
+          <Briefing stage={screen.stage} onBack={home} onStart={(seconds) => setScreen({ name: "play", stage: screen.stage, seconds })} />
         )}
-        {screen.name === "play" && <PlayStage stage={screen.stage} onExit={home} />}
+        {screen.name === "play" && <PlayStage stage={screen.stage} seconds={screen.seconds} onExit={home} />}
       </motion.div>
     </AnimatePresence>
   );
 }
 
-function PlayStage({ stage, onExit }: { stage: Stage; onExit: () => void }) {
-  const g = useGame(stage);
+function PlayStage({ stage, seconds, onExit }: { stage: Stage; seconds: number; onExit: () => void }) {
+  const g = useGame(stage, seconds);
   return <Play g={g} stageId={stage.id} onExit={onExit} />;
 }

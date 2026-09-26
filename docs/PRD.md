@@ -215,7 +215,9 @@ Game mechanics exist only to make people practice better persuasion more often; 
 | Highlight card | Shareable image of a critical line and the character's reaction | Virality |
 | Boss stage | Third character in each mode | Goal setting |
 
-Time-limit modes:
+Hackathon build: the player picks a **session length (30 sec, 1 min, 2 min, 5 min)** on the briefing screen. The clock pauses while the character is thinking or talking; time out = lose unless the progress gauge is full. The end screen shows short bullet feedback, **What you did well** and **What to work on**, each quoting the player's own line.
+
+Original time-limit modes (post-hackathon):
 
 - **Normal**: 30 seconds per turn. When time runs out, the turn is skipped and the character gets impatient.
 - **Rush**: whole stage in 3 minutes, no per-turn limit. Tests fast thinking under pressure, like a real elevator pitch.

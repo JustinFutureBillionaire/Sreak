@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useState } from "react";
-import type { Stage } from "@/app/useGame";
+import { SESSION_OPTIONS, type Stage } from "@/app/useGame";
 import Face, { type Look } from "./Face";
 
 const doorStyle: Record<string, { color: string; look: Look; blurb: string }> = {
@@ -91,8 +91,9 @@ export function Home({ stages, onPick }: { stages: Stage[]; onPick: (s: Stage) =
   );
 }
 
-export function Briefing({ stage, onStart, onBack }: { stage: Stage; onStart: () => void; onBack: () => void }) {
+export function Briefing({ stage, onStart, onBack }: { stage: Stage; onStart: (seconds: number) => void; onBack: () => void }) {
   const b = stage.brief;
+  const [seconds, setSeconds] = useState(120);
   const d = doorStyle[stage.id];
   return (
     <main className="dots mx-auto flex w-full max-w-4xl flex-1 flex-col gap-4 px-4 py-6 sm:py-10">
@@ -131,10 +132,26 @@ export function Briefing({ stage, onStart, onBack }: { stage: Stage; onStart: ()
             ))}
           </ul>
           <p className="mt-4 rounded-xl border-[3px] border-dashed border-ink/40 px-3 py-2 text-sm font-bold">
-            Fill <b>{b.progressLabel}</b> to win. You lose if <b>{b.riskLabel}</b> hits 100 or your {b.turnLimit} turns run out. You get{" "}
-            {b.turnSeconds}s per line. Bribes, threats and fake titles backfire.
+            Fill <b>{b.progressLabel}</b> before time runs out. You lose if <b>{b.riskLabel}</b> hits 100. The clock stops while{" "}
+            {b.name.split(" ")[0]} is thinking or talking. Bribes, threats and fake titles backfire.
           </p>
-          <button onClick={onStart} className="btn mt-5 w-full bg-bubble px-6 py-3 font-display text-2xl sm:w-auto">
+          <h3 className="mt-5 font-display text-xl">Session length</h3>
+          <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Session length">
+            {SESSION_OPTIONS.map((s) => (
+              <button
+                key={s}
+                role="radio"
+                aria-checked={seconds === s}
+                onClick={() => setSeconds(s)}
+                className="btn px-4 py-2 font-display text-lg"
+                style={{ background: seconds === s ? "var(--sky)" : "var(--paper)" }}
+                data-pressed={seconds === s}
+              >
+                {s < 60 ? `${s} sec` : `${s / 60} min`}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => onStart(seconds)} className="btn mt-5 w-full bg-bubble px-6 py-3 font-display text-2xl sm:w-auto">
             {b.mode === "gate" ? "Knock on the door" : "Start the pitch"}
           </button>
         </div>

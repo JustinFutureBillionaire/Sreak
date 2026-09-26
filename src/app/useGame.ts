@@ -15,60 +15,44 @@ export type Turn = PastTurn & {
   voided: boolean;
   event: GameEvent;
   ms: number;
-  timedOut?: boolean;
 };
 
 const clamp = (n: number) => Math.max(0, Math.min(100, n));
-const TIMEOUT_RISK = 10;
 
-export function useGame(stage: Stage) {
+export const SESSION_OPTIONS = [30, 60, 120, 300]; // seconds
+
+export function useGame(stage: Stage, sessionSeconds: number) {
   const b = stage.brief;
   const [turns, setTurns] = useState<Turn[]>([]);
   const [busy, setBusy] = useState(false); // waiting for Jev
   const [streaming, setStreaming] = useState(false); // NPC line still arriving
   const [error, setError] = useState("");
-  const [turnStart, setTurnStart] = useState(() => Date.now());
-  const [now, setNow] = useState(() => Date.now());
+  // Session clock: counts only while the player is on the clock (paused while Jev judges and the NPC talks).
+  const [spentMs, setSpentMs] = useState(0);
   const [report, setReport] = useState<Report | null>(null);
   const [reportFailed, setReportFailed] = useState(false);
 
   const played = turns.filter((t) => !t.voided);
   const progress = clamp(turns.reduce((s, t) => clamp(s + t.progress), 0));
   const risk = clamp(turns.reduce((s, t) => clamp(s + t.risk), 0));
-  const turnsLeft = b.turnLimit - played.length;
-  const outcome: "win" | "lose" | null = progress >= 100 ? "win" : risk >= 100 || turnsLeft <= 0 ? "lose" : null;
+  const timeLeft = Math.max(0, Math.ceil(sessionSeconds - spentMs / 1000));
+  const outcome: "win" | "lose" | null = progress >= 100 ? "win" : risk >= 100 || timeLeft <= 0 ? "lose" : null;
   const last = turns.at(-1);
   const fouls = turns.filter((t) => t.event === "foul").length;
-  // Clear / turn efficiency (used at most half the turns) / zero fouls.
-  const stars = outcome === "win" ? 1 + (played.length <= Math.ceil(b.turnLimit / 2) ? 1 : 0) + (fouls === 0 ? 1 : 0) : 0;
+  // Clear / fast (at most half the session) / zero fouls.
+  const stars = outcome === "win" ? 1 + (spentMs / 1000 <= sessionSeconds / 2 ? 1 : 0) + (fouls === 0 ? 1 : 0) : 0;
 
-  // Per-turn countdown. Only ticks while the player is on the clock; restarts after every turn.
   const paused = busy || streaming || !!outcome;
-  const timeLeft = paused ? b.turnSeconds : Math.min(b.turnSeconds, Math.max(0, b.turnSeconds - Math.floor((now - turnStart) / 1000)));
   useEffect(() => {
     if (paused) return;
+    let last = Date.now();
     const id = setInterval(() => {
       const t = Date.now();
-      setNow(t);
-      if (t - turnStart < b.turnSeconds * 1000) return;
-      setTurnStart(t);
-      setTurns((ts) => [
-        ...ts,
-        {
-          player: "(stayed silent)",
-          npc: b.mode === "gate" ? "Hello? You gonna say something or not?" : "*checks her watch* ...Still there?",
-          progress: 0,
-          risk: TIMEOUT_RISK,
-          tags: [{ code: "T", label: "Too slow", points: TIMEOUT_RISK, gauge: "risk" }],
-          voided: false,
-          event: "none",
-          ms: 0,
-          timedOut: true,
-        },
-      ]);
-    }, 250);
+      setSpentMs((ms) => ms + (t - last));
+      last = t;
+    }, 200);
     return () => clearInterval(id);
-  }, [paused, turnStart, b.turnSeconds, b.mode]);
+  }, [paused]);
 
   // Fetch the feedback report once the stage ends.
   const reportDone = !!outcome && !streaming;
@@ -132,7 +116,6 @@ export function useGame(stage: Stage) {
     } finally {
       setBusy(false);
       setStreaming(false);
-      setTurnStart(Date.now());
     }
   }
 
@@ -141,7 +124,7 @@ export function useGame(stage: Stage) {
     setReport(null);
     setReportFailed(false);
     setError("");
-    setTurnStart(Date.now());
+    setSpentMs(0);
     reported.current = false;
   }
 
@@ -149,8 +132,9 @@ export function useGame(stage: Stage) {
     brief: b,
     progress, // 0–100
     risk, // 0–100
-    turnsLeft,
-    timeLeft, // seconds left this turn
+    turnsUsed: played.length,
+    sessionSeconds,
+    timeLeft, // seconds left in the session
     turns,
     lastTags: last?.tags ?? [],
     event: last?.event ?? ("none" as GameEvent),

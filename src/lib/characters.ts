@@ -11,8 +11,6 @@ export type Brief = {
   role: string;
   progressLabel: string;
   riskLabel: string;
-  turnLimit: number;
-  turnSeconds: number;
   scenario: {
     goal: string; // what winning looks like
     purpose: string; // why you're doing it
@@ -55,8 +53,6 @@ export const characters: Character[] = [
       role: "Tired night-shift guard",
       progressLabel: "Door open",
       riskLabel: "Suspicion",
-      turnLimit: 8,
-      turnSeconds: 30,
       scenario: {
         goal: "Convince Dale, the night guard, to let you into the building so you can go upstairs and grab your laptop.",
         purpose: "Your laptop has the slides for a big presentation tomorrow morning. Without it, the presentation falls apart.",
@@ -102,8 +98,6 @@ export const characters: Character[] = [
       role: "Friendly angel investor",
       progressLabel: "Conviction",
       riskLabel: "Skepticism",
-      turnLimit: 10,
-      turnSeconds: 45,
       scenario: {
         goal: "Convince Dana, an angel investor, to put $50K into your startup before your 20-minute coffee is up.",
         purpose: "You need money to bring ShelfLife to more stores, and Dana's check would help you close your round.",

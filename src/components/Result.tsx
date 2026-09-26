@@ -68,7 +68,7 @@ export default function Result({ g, onExit }: { g: Game; onExit: () => void }) {
             );
           })}
         </div>
-        <p className="text-center text-sm font-bold opacity-70">Clear · finish in half the turns · no fouls</p>
+        <p className="text-center text-sm font-bold opacity-70">Stars: clear it, clear it in half the time, no fouls</p>
 
         <div className="mt-5 space-y-3 text-[15px] leading-relaxed">
           {g.reportState === "loading" && (
@@ -78,24 +78,9 @@ export default function Result({ g, onExit }: { g: Game; onExit: () => void }) {
           )}
           {g.reportState === "error" && <p className="text-center font-bold">The coach&apos;s notes didn&apos;t load. Play again to get a fresh report.</p>}
           {g.report && (
-            <motion.div className="space-y-3" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-              <p className="font-extrabold">{g.report.verdict}</p>
-              <Card color="var(--mint)" title="Best line">
-                <q className="font-bold">{g.report.bestMoment.quote}</q>
-                <p className="mt-1">{g.report.bestMoment.why}</p>
-              </Card>
-              {g.report.mistakes.map((m, i) => (
-                <Card key={i} color="var(--bubble)" title="Could be sharper">
-                  <q className="font-bold">{m.quote}</q>
-                  <p className="mt-1">{m.why}</p>
-                  <p className="mt-1.5 rounded-lg bg-white/70 px-2 py-1">
-                    <b>Try:</b> {m.better}
-                  </p>
-                </Card>
-              ))}
-              <Card color="var(--sky)" title="Next time">
-                {g.report.nextDrill}
-              </Card>
+            <motion.div className="space-y-4" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+              <Points color="var(--mint)" title="What you did well" points={g.report.strengths} />
+              <Points color="var(--bubble)" title="What to work on" points={g.report.improvements} />
             </motion.div>
           )}
         </div>
@@ -113,11 +98,22 @@ export default function Result({ g, onExit }: { g: Game; onExit: () => void }) {
   );
 }
 
-function Card({ color, title, children }: { color: string; title: string; children: React.ReactNode }) {
+function Points({ color, title, points }: { color: string; title: string; points: { quote: string; note: string }[] }) {
+  if (!points.length) return null;
   return (
-    <div className="rounded-2xl border-[3px] border-ink p-3" style={{ background: `color-mix(in srgb, ${color} 28%, white)` }}>
-      <div className="mb-1 font-display text-base">{title}</div>
-      {children}
+    <div className="rounded-2xl border-[3px] border-ink p-4" style={{ background: `color-mix(in srgb, ${color} 28%, white)` }}>
+      <h3 className="mb-2 font-display text-lg">{title}</h3>
+      <ul className="space-y-2.5">
+        {points.map((p, i) => (
+          <li key={i} className="flex gap-2">
+            <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full border-2 border-ink" style={{ background: color }} />
+            <div>
+              <q className="font-extrabold">{p.quote}</q>
+              <div>{p.note}</div>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
