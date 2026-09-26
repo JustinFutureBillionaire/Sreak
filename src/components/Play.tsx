@@ -3,7 +3,7 @@
 import { AnimatePresence, motion, useAnimationControls, useSpring, useTransform } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import type { Game } from "@/app/useGame";
-import { useVoice, type VoiceStatus } from "@/app/useVoice";
+import { useVoice, type EndCheck, type VoiceStatus } from "@/app/useVoice";
 import { GradeStamp, HitBanner, HitCard } from "./Hit";
 import Result from "./Result";
 import Scene from "./Scene";
@@ -146,6 +146,9 @@ export default function Play({ g, stageId, onExit }: { g: Game; stageId: string;
           aria-label="Your line"
           className="sticker max-h-60 min-h-16 w-full min-w-0 flex-1 resize-none overflow-y-auto bg-paper px-4 py-3 text-base font-bold leading-snug [field-sizing:content] placeholder:text-ink/40 focus:outline-none"
         />
+        {(voice.status === "listening" || voice.status === "checking") && (
+          <VoiceStrip status={voice.status} hearing={voice.hearing} check={voice.check} scoring={g.busy} />
+        )}
         <div className="flex items-center gap-3">
           <TimerRing left={g.timeLeft} total={g.sessionSeconds} paused={locked} lowAt={lowAt} />
           <MicButton status={voice.status} onClick={voice.toggle} />
@@ -273,10 +276,52 @@ function MicButton({ status, onClick }: { status: VoiceStatus; onClick: () => vo
 function VoiceNote({ status }: { status: VoiceStatus }) {
   const text = {
     off: "",
-    listening: "Mic on. Pause when you're done and Jev decides if you've finished.",
-    checking: "Jev is checking if you're done…",
+    listening: "",
+    checking: "",
     unsupported: "Voice needs Chrome or Edge. Typing still works.",
     blocked: "Mic is blocked. Allow it in the address bar, then tap the mic again.",
   }[status];
   return text ? <span className="text-right opacity-80">{text}</span> : null;
+}
+
+// Makes the voice turn-taking visible: hearing you, pause, Jev's call on whether you're done, scoring.
+function VoiceStrip({ status, hearing, check, scoring }: { status: VoiceStatus; hearing: boolean; check: EndCheck | null; scoring: boolean }) {
+  const pct = check?.p != null ? ` (${Math.round(check.p * 100)}% done)` : "";
+  const step = scoring || check?.done ? 3 : status === "checking" ? 2 : hearing ? 1 : 0;
+  const msg = scoring
+    ? check?.forced
+      ? "Long pause, so your statement was sent. Scoring…"
+      : `Jev: statement complete${pct}. Scoring…`
+    : status === "checking"
+      ? "You paused. Jev is checking if your statement is complete…"
+      : check && !check.done
+        ? `Jev: sounds unfinished${pct}. Keep going.`
+        : hearing
+          ? "Hearing you. Pause when your point is made."
+          : "Listening. Start talking.";
+  const steps = ["Listening", "Hearing you", "Jev checks", "Scored"];
+  return (
+    <div className="rounded-2xl border-[3px] border-ink bg-white px-3 py-2" aria-live="polite">
+      <ol className="flex flex-wrap items-center gap-1.5 text-xs font-extrabold">
+        {steps.map((label, i) => (
+          <li key={label} className="flex items-center gap-1.5">
+            <motion.span
+              className="rounded-full border-2 border-ink px-2 py-0.5"
+              animate={{
+                background: i === step ? (i === 2 ? "var(--lilac)" : i === 3 ? "var(--mint)" : "var(--sky)") : i < step ? "#e7e1ee" : "#fff",
+                scale: i === step ? 1.08 : 1,
+              }}
+            >
+              {label}
+            </motion.span>
+            {i < steps.length - 1 && <span className="opacity-40">→</span>}
+          </li>
+        ))}
+      </ol>
+      <p className="mt-1.5 text-sm font-bold" style={{ color: check && !check.done && !scoring ? "#b0620f" : undefined }}>
+        {msg}
+        {status === "checking" && <Dots />}
+      </p>
+    </div>
+  );
 }

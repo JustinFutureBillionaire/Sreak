@@ -21,6 +21,8 @@ type Rec = {
 type RecCtor = new () => Rec;
 
 export type VoiceStatus = "off" | "listening" | "checking" | "unsupported" | "blocked";
+// What Jev said at the last pause, shown to the player so the endpointing is visible.
+export type EndCheck = { done: boolean; p: number | null; forced?: boolean };
 
 export function useVoice(opts: {
   characterId: string;
@@ -31,6 +33,8 @@ export function useVoice(opts: {
 }) {
   const [on, setOn] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [check, setCheck] = useState<EndCheck | null>(null);
+  const [hearing, setHearing] = useState(false); // has words in the buffer
   const [problem, setProblem] = useState<"unsupported" | "blocked" | null>(null);
   const rec = useRef<Rec | null>(null);
   const finalText = useRef("");
@@ -46,10 +50,12 @@ export function useVoice(opts: {
     timers.current = [];
   };
 
-  const finish = (text: string) => {
+  const finish = (text: string, why: EndCheck) => {
     clearTimers();
     finalText.current = "";
     current.current = "";
+    setCheck(why);
+    setHearing(false);
     o.current.onTurn(text);
   };
 
@@ -63,9 +69,11 @@ export function useVoice(opts: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ characterId: o.current.characterId, text, lastLine: o.current.lastLine }),
       });
-      const { done } = await res.json();
+      const { done, p } = await res.json();
       // Only act if nothing new was said while Jev was deciding.
-      if (done && current.current.trim() === text) finish(text);
+      if (current.current.trim() !== text) return;
+      if (done) finish(text, { done: true, p });
+      else setCheck({ done: false, p });
     } finally {
       setChecking(false);
     }
@@ -86,6 +94,7 @@ export function useVoice(opts: {
     r.interimResults = true;
     r.lang = "en-US";
     r.onresult = (e) => {
+      if (!alive) return;
       let interim = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const res = e.results[i];
@@ -94,9 +103,11 @@ export function useVoice(opts: {
       }
       current.current = (finalText.current + interim).replace(/\s+/g, " ");
       o.current.onText(current.current);
+      setHearing(true);
+      setCheck(null); // new words: the last verdict no longer applies
       clearTimers();
       timers.current.push(setTimeout(onPause, PAUSE_MS));
-      timers.current.push(setTimeout(() => current.current.trim() && finish(current.current.trim()), HARD_STOP_MS));
+      timers.current.push(setTimeout(() => current.current.trim() && finish(current.current.trim(), { done: true, p: null, forced: true }), HARD_STOP_MS));
     };
     r.onerror = (e) => {
       if (e.error === "not-allowed" || e.error === "service-not-allowed") setProblem("blocked");
@@ -123,6 +134,8 @@ export function useVoice(opts: {
   const status: VoiceStatus = problem ?? (!on ? "off" : checking ? "checking" : "listening");
   return {
     status,
+    check, // Jev's verdict at the last pause
+    hearing,
     toggle: () => {
       setProblem(null);
       setOn((v) => !v);
