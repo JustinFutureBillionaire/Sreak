@@ -14,13 +14,13 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const character = getCharacter(body?.characterId);
   const text = typeof body?.text === "string" ? body.text.trim() : "";
-  const str = (v: unknown) => (typeof v === "string" ? v.slice(0, 500) : undefined);
+  const str = (v: unknown) => (typeof v === "string" ? v.slice(0, 800) : undefined);
   const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? clamp(v) : 0);
   const history: PastTurn[] = (Array.isArray(body?.history) ? body.history.slice(-20) : []).map(
     (t: Record<string, unknown>) => ({ player: str(t?.player) ?? "", npc: str(t?.npc), tag: str(t?.tag) }),
   );
-  if (!character || !text || text.length > 500) {
-    return Response.json({ error: "Need a valid characterId and 1–500 characters of text." }, { status: 400 });
+  if (!character || !text || text.length > 800) {
+    return Response.json({ error: "Need a valid characterId and 1–800 characters of text." }, { status: 400 });
   }
 
   const started = Date.now();

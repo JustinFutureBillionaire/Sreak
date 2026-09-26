@@ -81,6 +81,7 @@ export default function Result({ g, onExit }: { g: Game; onExit: () => void }) {
             <motion.div className="space-y-4" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
               <Points color="var(--mint)" title="What you did well" points={g.report.strengths} />
               <Points color="var(--bubble)" title="What to work on" points={g.report.improvements} />
+              <Habits habits={g.report.habits} />
             </motion.div>
           )}
         </div>
@@ -98,7 +99,7 @@ export default function Result({ g, onExit }: { g: Game; onExit: () => void }) {
   );
 }
 
-function Points({ color, title, points }: { color: string; title: string; points: { quote: string; note: string }[] }) {
+function Points({ color, title, points = [] }: { color: string; title: string; points?: { quote: string; note: string }[] }) {
   if (!points.length) return null;
   return (
     <div className="rounded-2xl border-[3px] border-ink p-4" style={{ background: `color-mix(in srgb, ${color} 28%, white)` }}>
@@ -114,6 +115,26 @@ function Points({ color, title, points }: { color: string; title: string; points
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+function Habits({ habits = [] }: { habits?: { kind: string; word: string; count: number }[] }) {
+  const label = { filler: "Filler", hedge: "Hedge", apology: "Apology" } as Record<string, string>;
+  return (
+    <div className="rounded-2xl border-[3px] border-ink bg-white p-4">
+      <h3 className="mb-2 font-display text-lg">Verbal habits</h3>
+      {habits.length ? (
+        <ul className="flex flex-wrap gap-2">
+          {habits.map((h) => (
+            <li key={h.word} className="rounded-full border-[3px] border-ink px-3 py-1 text-sm font-extrabold" style={{ background: h.kind === "filler" ? "var(--lemon)" : h.kind === "hedge" ? "var(--lilac)" : "var(--sky)" }}>
+              {label[h.kind]}: &ldquo;{h.word}&rdquo; ×{h.count}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="font-bold">No filler words or hedging. Clean delivery.</p>
+      )}
     </div>
   );
 }

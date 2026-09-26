@@ -16,7 +16,7 @@ export default function Play({ g, stageId, onExit }: { g: Game; stageId: string;
   const b = g.brief;
   const [text, setText] = useState("");
   const frame = useAnimationControls();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (g.event === "foul") frame.start({ x: [0, -14, 14, -10, 10, -5, 0], transition: { duration: 0.45 } });
@@ -105,22 +105,33 @@ export default function Play({ g, stageId, onExit }: { g: Game; stageId: string;
       )}
 
       {/* Input */}
-      <form onSubmit={submit} className="flex items-center gap-3">
-        <TimerRing left={g.timeLeft} total={g.sessionSeconds} paused={locked} lowAt={lowAt} />
-        <MicButton status={voice.status} onClick={voice.toggle} />
-        <input
+      <form onSubmit={submit} className="flex flex-col gap-3">
+        <textarea
           ref={inputRef}
           value={text}
+          rows={1}
           onChange={(e) => setText(e.target.value)}
-          maxLength={500}
+          onKeyDown={(e) => {
+            // Enter sends, Shift+Enter adds a line.
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              if (!locked && text.trim()) sendLine(text);
+            }
+          }}
+          maxLength={800}
           disabled={!!g.outcome}
           placeholder={g.busy ? "Judging…" : voice.status === "listening" ? "Listening… just talk" : `Say something to ${b.name.split(" ")[0]}`}
           aria-label="Your line"
-          className="sticker min-w-0 flex-1 bg-paper px-4 py-3 text-base font-bold placeholder:text-ink/40 focus:outline-none"
+          className="sticker max-h-60 min-h-16 w-full min-w-0 flex-1 resize-none overflow-y-auto bg-paper px-4 py-3 text-base font-bold leading-snug [field-sizing:content] placeholder:text-ink/40 focus:outline-none"
         />
-        <button disabled={locked || !text.trim()} className="btn bg-bubble px-5 py-3 font-display text-lg">
+        <div className="flex items-center gap-3">
+          <TimerRing left={g.timeLeft} total={g.sessionSeconds} paused={locked} lowAt={lowAt} />
+          <MicButton status={voice.status} onClick={voice.toggle} />
+          <span className="flex-1" />
+  <button disabled={locked || !text.trim()} className="btn bg-bubble px-7 py-3 font-display text-lg">
           Say it
         </button>
+        </div>
       </form>
       <div className="flex items-center justify-between text-sm font-extrabold">
         <span>Turn {g.turnsUsed + 1}</span>
