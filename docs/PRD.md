@@ -9,7 +9,7 @@ Sep 26, 2026 · @Seungjun Oh
 Srake is a web game for persuasion training where every sentence you say is scored in real time. Players clear stages by talking a security guard, an investor, or a friend about to go all-in on a coin into changing their mind.
 
 - **Problem**: Persuasion is a skill built through repetition and instant feedback, yet there is no safe place to practice. Existing AI roleplay tools are mostly built for B2B sales teams and sold per seat.
-- **Solution**: Jev judges every utterance against 20–25 research-based rubric items instantly, moving the gauges and the character's facial expression. An OpenAI GPT model handles character dialogue and the post-stage debrief. Higgsfield generates the character art, scene backgrounds, and cutscene videos.
+- **Solution**: Jev judges every utterance against 20–25 research-based rubric items instantly, moving the gauges and the character's facial expression. An OpenAI GPT model handles character dialogue and the post-stage debrief.
 - **Why Jev**: Each round requires 8–12 utterances × 20+ items judged in real time. A general LLM is too slow and too expensive for this.
 - **Why now**: A System One model (Jev) launched this month, making sentence-level real-time judgment nearly free.
 - **Hackathon goal**: The Gate mode with 3 stages fully playable, The Pitch mode with 1 stage, and one scoring-agreement validation number.
@@ -270,28 +270,28 @@ The environment reacts too: the door creaks open bit by bit, the checkbook on th
 
 Why parametric: no time to draw illustrations at a hackathon, expressions stay perfectly in sync with gauges, and new characters only need new colors and props.
 
-### Visual Tone and Asset Pipeline (Higgsfield)
+### Visual Tone and Hit Feel
 
 The hackathon build aims for a **bright, playful casual-game look**: cream background, thick dark outlines, chunky rounded display type, buttons with a hard drop shadow that "press" down, and pop-in animations everywhere. The Gate's night scene is reinterpreted in bright pastel neon rather than dark navy.
 
-Higgsfield (image + video generation API) produces the pre-rendered art; code produces every real-time reaction.
+No generated video or paid art pipeline. Everything is code: parametric SVG characters and scenes, Framer Motion, and `canvas-confetti`. What matters is **hit feel** — the player sees the reaction the instant Jev judges a line.
 
-| Asset | Made with | Notes |
-| --- | --- | --- |
-| Character expression art, 6 per character (neutral, suspicious, annoyed, wavering, moved, surrender) | Higgsfield image, same character reference for consistency | Replaces the parametric SVG face for the demo; the UI cross-fades between keyframes as gauges move |
-| Scene backgrounds (building lobby, coffee shop) | Higgsfield image | Bright, flat, sticker-art style |
-| Home screen: three doors | Higgsfield image | Each door opens into its mode |
-| Idle loop and clear cutscene (door swings open / term sheet slides over) | Higgsfield video, 3–5 s | Played on win |
-| Opening trailer for the presentation | Higgsfield video, ~10 s | Also the recorded fallback |
+| Moment | Effect |
+| --- | --- |
+| Every turn | Skill-tag pop-ups ("+12 LIKING!") with counting numbers, springy gauge bounce, eyebrows/eyes/mouth tween to the new gauge values |
+| While typing | Character's pupils follow the input box; a "..." thought bubble |
+| Critical (hidden concern resolved) | White flash, quick zoom on the face, eyes pop, big gold tag |
+| Foul (bribe, threat) | Red flash, screen shake, face turns red with steam |
+| Repetition | Yawn, grey "−8 REPETITION" tag |
+| Low time/turns | Sweat drop grows |
+| Clear | Door swings open / checkbook slides over, confetti, three stars stamp in one by one |
+| Fail | Character turns away, screen desaturates |
 
-Real-time effects in code (Framer Motion + `canvas-confetti`):
+Scenes are simple layered SVG: the building lobby with a door that opens with the progress gauge; for The Pitch, **four investors seated behind a long desk**, each a small parametric face (the lead investor reacts most, the others echo the mood).
 
-- Every turn: skill-tag pop-ups ("+12 LIKING!"), counting numbers, springy gauge bounce, expression cross-fade.
-- Critical (hidden concern resolved): screen flash, slow-mo zoom on the character, big tag.
-- Foul (bribe, threat): red flash, screen shake, the character's "furious" frame.
-- Clear: cutscene video, confetti, three stars stamping in one by one.
+If a static illustration is needed (home key art, share card background), generate it once with the OpenAI image API and commit it under `public/assets/`.
 
-API keys live only in server env vars: `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `HIGGSFIELD_API_KEY`.
+API keys live only in server env vars: `TYPESAFE_API_KEY`, `OPENAI_API_KEY`.
 
 ### Stage 1 Scenarios
 
@@ -320,7 +320,6 @@ Keep it simple: one web app with serverless API routes. Most of the cost comes f
 | API | Next.js Route Handlers + SSE streaming | Push judgment first, then dialogue |
 | System 1 | Jev (model: jev-latest) | Judgment |
 | System 2 | OpenAI API (GPT), streaming | Dialogue, feedback report, re-judging |
-| Art assets | Higgsfield API (image + video generation) | Character expression art, backgrounds, cutscenes, trailer |
 | Storage | Hackathon: stateless API + browser localStorage (no login, no Supabase); later Supabase | Login, history, skill tree |
 | Deploy | Vercel |  |
 
@@ -368,6 +367,21 @@ Build order (done criteria for each step):
 5. Stage 2 and 3 characters + end-of-session feedback report → all 3 stages clearable with a report.
 6. (Should) Pitch mode, Rush mode, golden-set validation.
 7. Demo rehearsal + recorded fallback.
+
+### Demo-Day Plan (2 people, 2 hours)
+
+Split by files so nobody edits the same thing. Both work on `main`, commit small, `git pull --rebase` often.
+
+| | A — Game logic | B — Visuals and hit feel |
+| --- | --- | --- |
+| Owns | `src/app/api/*`, `src/lib/*`, `src/app/useGame.ts` | `src/components/*`, `src/app/page.tsx`, `src/app/globals.css`, `public/assets/*` |
+| Builds | GPT dialogue streaming, per-turn timer, win/lose, feedback report API | Design system, home (three doors), stage select, play screen, SVG faces + scenes, all effects in "Visual Tone and Hit Feel" |
+| Contract | `useGame()` returns gauges, turns left, time left, latest tags, event (`critical` / `foul` / `repeat` / `none`), NPC text, outcome, `send()` | Components render only from `useGame()` |
+
+- 0:00–0:10 A pushes `useGame()` with the contract above (works with the current text UI).
+- 0:10–1:20 Build in parallel.
+- 1:20–1:40 Integrate and playtest both stages.
+- 1:40–2:00 Deploy to Vercel, rehearse the 3-minute demo, record a fallback video.
 
 Demo flow (3 minutes): one-sentence problem → a judge plays Guard 1 live with the timer → show a foul reaction with a bribe → feedback report → switch to Pitch mode → numbers (judgments per turn, reaction speed, cost, agreement rate) → expansion vision.
 
