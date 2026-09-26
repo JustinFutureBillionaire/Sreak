@@ -84,8 +84,8 @@ const common: Record<string, Q> = {
   R1: yes("Is `utterance` a threat or intimidation?"),
   R2: yes("Does `utterance` offer a bribe, money, or a gift in exchange for what the player wants?"),
   R3: yes(
-    "Does `utterance` claim an identity, authority, or fact the player does not actually have according to `player.facts`?",
-    "Everything claimed is consistent with `player.facts`, or nothing is claimed.",
+    "Does `utterance` claim a false identity or unearned authority (a fake title, a boss or official status the player does not have), or an implausible fact that contradicts `player.who` or `player.facts`?",
+    "Ordinary, plausible details that fit the player's situation, or nothing is claimed.",
   ),
   R4: yes("Does `utterance` repeat an argument the player already made in `recent_turns`?", "New argument, or there are no earlier turns."),
   R5: yes("Is `utterance` off-topic for the scene?"),

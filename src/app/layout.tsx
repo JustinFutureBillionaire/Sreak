@@ -6,7 +6,7 @@ const bagel = Bagel_Fat_One({ variable: "--font-bagel", weight: "400", subsets: 
 const nunito = Nunito({ variable: "--font-nunito", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Srake",
+  title: "Sreak",
   description: "Speak and Break — talk your way past a guard, win over investors. Every line is judged live.",
 };
 

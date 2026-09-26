@@ -1,4 +1,4 @@
-# Srake — PRD & Business Plan
+# Sreak — PRD & Business Plan
 
 *Speak and Break: a persuasion-training game where you talk your way through the door*
 
@@ -6,7 +6,7 @@ Sep 26, 2026 · @Seungjun Oh
 
 ## Summary
 
-Srake is a web game for persuasion training where every sentence you say is scored in real time. Players clear stages by talking a security guard, an investor, or a friend about to go all-in on a coin into changing their mind.
+Sreak is a web game for persuasion training where every sentence you say is scored in real time. Players clear stages by talking a security guard, an investor, or a friend about to go all-in on a coin into changing their mind.
 
 - **Problem**: Persuasion is a skill built through repetition and instant feedback, yet there is no safe place to practice. Existing AI roleplay tools are mostly built for B2B sales teams and sold per seat.
 - **Solution**: Jev judges every utterance against 20–25 research-based rubric items instantly, moving the gauges and the character's facial expression. OpenAI GPT-5 nano handles character dialogue and GPT-5 mini the post-stage debrief.
@@ -83,7 +83,7 @@ Shared character structure:
 
 Swapping character config on the same engine adds new modes: interviewer, salary negotiation, convincing parents, English debate. The marginal cost of a new mode is content writing only.
 
-## Measurement System: Srake Scoring Engine
+## Measurement System: Sreak Scoring Engine
 
 Each utterance is judged on about 25 items across 4 layers. Items are many, but each is a Yes/No, a choice, or an ordered rubric whose every level has a written description. More items add richness; unanchored 1–10 scales add disagreement.
 
@@ -297,8 +297,10 @@ API keys live only in server env vars: `TYPESAFE_API_KEY`, `OPENAI_API_KEY`.
 
 Each stage opens with a briefing card (when, where, who you are, goal, facts you can use). Full text lives in `src/lib/characters.ts`.
 
-- **The Gate 1 — Dale, tired night guard.** Thursday 11:40 PM, raining, the lobby of Harbor Point Tower. You are a junior designer at Lumen Labs (14th floor). Your laptop with tomorrow's 9 AM investor-demo slides is on your desk, your badge stopped working at 10 PM, and your manager isn't answering. Hidden concern: Dale got a written warning last month; one more mistake and he's fired.
-- **The Pitch 1 — Dana Okafor, friendly angel.** Tuesday 10 AM, 20 minutes at a San Francisco coffee shop. You are the CEO of ShelfLife, an app that lets independent grocers sell near-expiry food at a discount to nearby shoppers (14 stores, $38K sales in 3 months, 41% month-2 retention). Goal: $50K of a $750K pre-seed SAFE at a $6M cap. Hidden concern: two founders she backed quit within 18 months.
+Scenarios stay short on purpose: one clear goal, a few facts, no homework before playing.
+
+- **The Gate 1 — Dale, tired night guard.** Late at night, an office lobby with the doors locked. You left your laptop upstairs and need it for a presentation tomorrow. **Goal: get the guard to let you in.** You have your ID and a badge that stops working at night. Hidden concern: one more mistake and Dale is fired.
+- **The Pitch 1 — Dana Okafor, friendly angel.** Morning coffee, 20 minutes. You founded ShelfLife, an app that sells near-expiry groceries at a discount. **Goal: get Dana to invest $50K.** You have 14 stores, $38K in sales in 3 months, and a co-founder from Stripe. Hidden concern: founders she backed quit when things got hard.
 
 ### Screens
 
@@ -436,4 +438,4 @@ Open questions:
 - [ ] Hackathon deadline and team setup
 - [ ] Jev rate limits for the demo
 - [ ] Demo language: English only vs Korean and English
-- [ ] Pronunciation, searchability, and trademark check for the name "Srake"
+- [ ] Pronunciation, searchability, and trademark check for the name "Sreak"

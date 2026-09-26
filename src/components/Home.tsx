@@ -9,7 +9,7 @@ const doorStyle: Record<string, { color: string; look: Look; blurb: string }> = 
   "gate-1": {
     color: "#6b4bd8",
     look: { skin: "#f5c59f", shirt: "#3d4fb8", hair: "cap", hairColor: "#c9c3bd", mustache: true },
-    blurb: "Talk a night guard into letting you upstairs.",
+    blurb: "Talk your way past a night guard.",
   },
   "pitch-1": {
     color: "#2fd4a3",
@@ -20,7 +20,7 @@ const doorStyle: Record<string, { color: string; look: Look; blurb: string }> = 
 
 export function Home({ stages, onPick }: { stages: Stage[]; onPick: (s: Stage) => void }) {
   const [opening, setOpening] = useState<string | null>(null);
-  const word = "Srake".split("");
+  const word = "Sreak".split("");
 
   function pick(s: Stage) {
     if (opening) return;
@@ -31,7 +31,7 @@ export function Home({ stages, onPick }: { stages: Stage[]; onPick: (s: Stage) =
   return (
     <main className="dots mx-auto flex w-full max-w-5xl flex-1 flex-col items-center gap-8 px-4 py-10 sm:py-14">
       <header className="text-center">
-        <h1 className="flex justify-center font-display text-7xl leading-none sm:text-9xl" aria-label="Srake">
+        <h1 className="flex justify-center font-display text-7xl leading-none sm:text-9xl" aria-label="Sreak">
           {word.map((ch, i) => (
             <motion.span
               key={i}
@@ -114,8 +114,11 @@ export function Briefing({ stage, onStart, onBack }: { stage: Stage; onStart: ()
         </div>
 
         <div>
-          <h2 className="font-display text-3xl sm:text-4xl">{b.modeTitle}</h2>
-          <p className="mt-2 text-lg font-extrabold">{b.scenario.goal}</p>
+          <p className="text-sm font-extrabold opacity-60">{b.modeTitle}</p>
+          <div className="mt-1 rounded-2xl border-[3px] border-ink bg-lemon px-4 py-3">
+            <div className="text-sm font-extrabold">Your goal</div>
+            <h2 className="font-display text-3xl leading-tight sm:text-4xl">{b.scenario.goal}</h2>
+          </div>
           <dl className="mt-4 grid gap-x-4 gap-y-2 text-[15px] sm:grid-cols-[5.5rem_1fr]">
             <dt className="font-extrabold opacity-60">When</dt>
             <dd className="font-bold">{b.scenario.time}</dd>
@@ -135,7 +138,7 @@ export function Briefing({ stage, onStart, onBack }: { stage: Stage; onStart: ()
           </ul>
           <p className="mt-4 rounded-xl border-[3px] border-dashed border-ink/40 px-3 py-2 text-sm font-bold">
             Fill <b>{b.progressLabel}</b> to win. You lose if <b>{b.riskLabel}</b> hits 100 or your {b.turnLimit} turns run out. You get{" "}
-            {b.turnSeconds}s per line. Only use facts you actually have.
+            {b.turnSeconds}s per line. Bribes, threats and fake titles backfire.
           </p>
           <button onClick={onStart} className="btn mt-5 w-full bg-bubble px-6 py-3 font-display text-2xl sm:w-auto">
             {b.mode === "gate" ? "Knock on the door" : "Start the pitch"}

@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# Srake
+# Sreak
 
 Persuasion-training web game. Spec: `docs/PRD.md` (source of truth).
 

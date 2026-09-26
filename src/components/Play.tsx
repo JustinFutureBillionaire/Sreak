@@ -59,6 +59,9 @@ export default function Play({ g, stageId, onExit }: { g: Game; stageId: string;
           {b.name} <span className="font-sans text-sm font-bold opacity-70">{b.role}</span>
         </div>
       </div>
+      <div className="self-start rounded-full border-[3px] border-ink bg-lemon px-4 py-1.5 font-extrabold">
+        Goal: {b.scenario.goal}
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <Gauge label={b.progressLabel} value={g.progress} color="var(--mint)" />
         <Gauge label={b.riskLabel} value={g.risk} color="var(--tomato)" />
