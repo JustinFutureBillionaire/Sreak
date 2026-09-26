@@ -124,9 +124,19 @@ const labels: Record<string, string> = {
 const title = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 const principleCode: Record<Mode, string> = { gate: "G2", pitch: "I7" };
 
+// What the line was, for one-shot effects (flash, shake, yawn) and the NPC's reaction.
+export type GameEvent = "critical" | "foul" | "repeat" | "none";
+function eventOf(tags: Tag[]): GameEvent {
+  const pts = (code: string) => tags.find((g) => g.code === code)?.points ?? 0;
+  if (pts("R1") >= 10 || pts("R2") >= 10 || pts("R6") >= 10) return "foul";
+  if (pts("C6") >= 8) return "critical";
+  if (pts("R4") <= -4) return "repeat";
+  return "none";
+}
+
 export function score(c: Character, answers: Answers, history: PastTurn[]) {
   if ("noul" in answers.R7 && answers.R7.noul > 0.5) {
-    return { progress: 0, risk: 0, tags: [] as Tag[], tag: undefined, voided: true };
+    return { progress: 0, risk: 0, tags: [] as Tag[], tag: undefined, voided: true, event: "foul" as GameEvent };
   }
 
   const tags: Tag[] = [];
@@ -159,11 +169,6 @@ export function score(c: Character, answers: Answers, history: PastTurn[]) {
     progress *= 0.6 ** (k - 1);
   }
 
-  return {
-    progress: Math.round(progress),
-    risk: Math.round(risk),
-    tags: tags.filter((t) => Math.abs(t.points) >= 3).map((t) => ({ ...t, points: Math.round(t.points) })),
-    tag,
-    voided: false,
-  };
+  const shown = tags.filter((t) => Math.abs(t.points) >= 3).map((t) => ({ ...t, points: Math.round(t.points) }));
+  return { progress: Math.round(progress), risk: Math.round(risk), tags: shown, tag, voided: false, event: eventOf(shown) };
 }

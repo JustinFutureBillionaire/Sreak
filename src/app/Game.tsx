@@ -52,7 +52,7 @@ function Play({ stage, onExit }: { stage: Stage; onExit: () => void }) {
         <Gauge label={b.progressLabel} value={progress} color="bg-emerald-500" />
         <Gauge label={b.riskLabel} value={risk} color="bg-rose-500" />
       </section>
-      <div className="text-sm text-neutral-500">Turns left: {g.turnsLeft} / {b.turnLimit}</div>
+      <div className="text-sm text-neutral-500">Turns left: {g.turnsLeft} / {b.turnLimit} · <span className={g.timeLeft <= 10 ? "font-bold text-rose-600" : ""}>{g.timeLeft}s</span></div>
 
       <section className="flex flex-col gap-3">
         <Line who={b.name} text={b.opening} />
@@ -70,15 +70,27 @@ function Play({ stage, onExit }: { stage: Stage; onExit: () => void }) {
                 Δ {b.progressLabel} {t.progress >= 0 ? "+" : ""}{t.progress} · Δ {b.riskLabel} {t.risk >= 0 ? "+" : ""}{t.risk} · {t.ms}ms
               </span>
             </div>
-            <Line who={b.name} text="(dialogue arrives in step 3)" muted />
+            <Line who={b.name} text={t.npc || "…"} muted={!t.npc} />
           </div>
         ))}
       </section>
 
       {outcome ? (
         <div className={`rounded-xl p-4 text-center font-semibold ${outcome === "win" ? "bg-emerald-100 text-emerald-900" : "bg-rose-100 text-rose-900"}`}>
-          {outcome === "win" ? "Cleared!" : "Failed."}{" "}
+          {outcome === "win" ? `Cleared! ${"★".repeat(g.stars)}${"☆".repeat(3 - g.stars)}` : "Failed."}{" "}
           <button onClick={g.reset} className="underline">Retry</button>
+          {g.reportState === "loading" && <p className="mt-2 text-sm font-normal">Writing your feedback…</p>}
+          {g.reportState === "error" && <p className="mt-2 text-sm font-normal">Feedback unavailable.</p>}
+          {g.report && (
+            <div className="mt-3 space-y-2 text-left text-sm font-normal">
+              <p><b>Verdict:</b> {g.report.verdict}</p>
+              <p><b>Best moment:</b> “{g.report.bestMoment.quote}” — {g.report.bestMoment.why}</p>
+              {g.report.mistakes.map((m) => (
+                <p key={m.quote}><b>Mistake:</b> “{m.quote}” — {m.why} <i>Try: “{m.better}”</i></p>
+              ))}
+              <p><b>Next drill:</b> {g.report.nextDrill}</p>
+            </div>
+          )}
         </div>
       ) : (
         <form onSubmit={send} className="flex gap-2">
@@ -90,7 +102,7 @@ function Play({ stage, onExit }: { stage: Stage; onExit: () => void }) {
             aria-label="Your line"
             className="flex-1 rounded-lg border px-3 py-2"
           />
-          <button disabled={busy} className="rounded-lg bg-neutral-900 px-4 py-2 text-white disabled:opacity-50 dark:bg-white dark:text-black">
+          <button disabled={busy || g.streaming} className="rounded-lg bg-neutral-900 px-4 py-2 text-white disabled:opacity-50 dark:bg-white dark:text-black">
             {busy ? "…" : "Say"}
           </button>
         </form>

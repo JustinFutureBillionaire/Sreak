@@ -1,16 +1,20 @@
 import { TypeSafeClient } from "@typesafe-ai/sdk";
 import { getCharacter } from "@/lib/characters";
+import { fallbackReply, streamReply } from "@/lib/dialogue";
 import { buildState, questionsFor, score, type Answers, type PastTurn } from "@/lib/engine";
 
 const jev = new TypeSafeClient();
+const clamp = (n: number) => Math.max(0, Math.min(100, n));
 
-// Stateless: the client sends its own history each turn, so this works on Vercel without a store.
-// ponytail: client-held history is trusted; a cheater only cheats themselves. Move to a session store with login.
+// Stateless: the client sends its own history and gauges each turn, so this works on Vercel without a store.
+// ponytail: client-held state is trusted; a cheater only cheats themselves. Move to a session store with login.
+// Response is NDJSON: one {"type":"judge"} line as soon as Jev answers, then {"type":"reply","delta"} lines, then {"type":"done"}.
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const character = getCharacter(body?.characterId);
   const text = typeof body?.text === "string" ? body.text.trim() : "";
   const str = (v: unknown) => (typeof v === "string" ? v.slice(0, 500) : undefined);
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? clamp(v) : 0);
   const history: PastTurn[] = (Array.isArray(body?.history) ? body.history.slice(-20) : []).map(
     (t: Record<string, unknown>) => ({ player: str(t?.player) ?? "", npc: str(t?.npc), tag: str(t?.tag) }),
   );
@@ -19,11 +23,47 @@ export async function POST(req: Request) {
   }
 
   const started = Date.now();
-  const { answers } = await jev.systemOne({
-    state: buildState(character, history, text),
-    questions: questionsFor(character.brief.mode),
-  });
-  const result = score(character, answers as unknown as Answers, history);
+  let judged;
+  try {
+    const { answers } = await jev.systemOne({
+      state: buildState(character, history, text),
+      questions: questionsFor(character.brief.mode),
+    });
+    judged = { ...score(character, answers as unknown as Answers, history), ms: Date.now() - started };
+  } catch (err) {
+    console.error("Jev failed", err);
+    return Response.json({ error: "Judge is unavailable, try again." }, { status: 502 });
+  }
 
-  return Response.json({ ...result, answers, ms: Date.now() - started });
+  const used = history.length + (judged.voided ? 0 : 1);
+  const mood = {
+    progress: clamp(num(body?.progress) + judged.progress),
+    risk: clamp(num(body?.risk) + judged.risk),
+    turnsLeft: character.brief.turnLimit - used,
+    event: judged.event,
+  };
+
+  const enc = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(ctrl) {
+      const send = (o: object) => ctrl.enqueue(enc.encode(JSON.stringify(o) + "\n"));
+      send({ type: "judge", ...judged });
+      if (judged.voided) {
+        send({ type: "reply", delta: "*frowns* Let's keep this about why you're here." });
+      } else {
+        try {
+          for await (const chunk of await streamReply(character, history, text, mood)) {
+            const delta = chunk.choices[0]?.delta?.content;
+            if (delta) send({ type: "reply", delta });
+          }
+        } catch (err) {
+          console.error("Dialogue failed, using fallback", err);
+          send({ type: "reply", delta: fallbackReply(character, mood) });
+        }
+      }
+      send({ type: "done" });
+      ctrl.close();
+    },
+  });
+  return new Response(stream, { headers: { "Content-Type": "application/x-ndjson", "Cache-Control": "no-store" } });
 }

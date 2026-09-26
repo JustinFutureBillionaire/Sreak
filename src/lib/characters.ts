@@ -12,6 +12,7 @@ export type Brief = {
   progressLabel: string;
   riskLabel: string;
   turnLimit: number;
+  turnSeconds: number;
   scenario: {
     time: string;
     place: string;
@@ -28,6 +29,8 @@ export type Character = {
   brief: Brief;
   persona: string;
   hiddenConcern: string;
+  // Canned lines if OpenAI is unavailable, so the demo never stalls.
+  fallback: { warm: string; cold: string; foul: string; win: string; lose: string };
   // Progress points per unit of Jev probability. Noul: code → weight. Choice: code → option → weight.
   weights: Record<string, number | Record<string, number>>;
   // Risk points per unit of Jev probability. Same shape as weights.
@@ -55,6 +58,7 @@ export const characters: Character[] = [
       progressLabel: "Door open",
       riskLabel: "Suspicion",
       turnLimit: 8,
+      turnSeconds: 30,
       scenario: {
         time: "Thursday, 11:40 PM. Raining.",
         place: "Lobby of Harbor Point Tower, a 20-floor office building downtown. The turnstiles lock at 10 PM.",
@@ -74,6 +78,13 @@ export const characters: Character[] = [
       "Dale, 58, has worked nights at this building for 11 years. He is tired, a little lonely, and warms up to people who are friendly and treat him like a person. He dislikes people who act important or throw titles around. He speaks in short, dry sentences.",
     hiddenConcern:
       "Last month Dale let a 'delivery guy' up without a log entry and a monitor was stolen. He got a written warning. One more mistake and he is fired. He needs anything he does tonight to be defensible to his supervisor.",
+    fallback: {
+      warm: "*rubs his eyes* ...Alright, I'm listening. Keep talking.",
+      cold: "Uh-huh. I've heard that one before, pal.",
+      foul: "*stands up* Whoa. That's not how this works. Try that again and I'm calling it in.",
+      win: "*sighs, grabs the keys* Fine. I'm logging it, and I'm walking up with you. Five minutes.",
+      lose: "We're done here. Door stays shut. Come back at seven.",
+    },
     weights: {
       ...commonWeights,
       G1: 5, G3: 4, G4: 4, G6: 3, G7: 6,
@@ -97,6 +108,7 @@ export const characters: Character[] = [
       progressLabel: "Conviction",
       riskLabel: "Skepticism",
       turnLimit: 10,
+      turnSeconds: 45,
       scenario: {
         time: "Tuesday, 10:00 AM. You have 20 minutes.",
         place: "A quiet corner table at Ritual Coffee in San Francisco. A mutual friend set up the intro.",
@@ -117,6 +129,13 @@ export const characters: Character[] = [
       "Dana, 44, sold her HR-software startup six years ago and now writes $25K–$100K angel checks. She is warm, curious, and cares most about the problem and the founders. She asks simple, human questions and dislikes jargon.",
     hiddenConcern:
       "Two founders she backed quit within 18 months when things got hard. She is quietly testing whether this founder will stick with it, and why they personally care about this problem.",
+    fallback: {
+      warm: "*leans in* Okay, that's interesting. Tell me more.",
+      cold: "Hm. I'm not sure I'm seeing it yet.",
+      foul: "*sets down her cup* I'm going to stop you there. That's not how I work.",
+      win: "*smiles* Alright. Send me the SAFE. I'm in for fifty.",
+      lose: "I appreciate your time, but it's a pass for me. Good luck.",
+    },
     weights: {
       ...commonWeights,
       I1: 4, I3: 5, I4: 6, I5: 5, I6: 4, I8: 4, I9: 3,
