@@ -1,13 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Brief } from "@/lib/characters";
-import type { PastTurn, Tag } from "@/lib/engine";
-
-type Stage = { id: string; brief: Brief };
-type Turn = PastTurn & { progress: number; risk: number; tags: Tag[]; voided: boolean; ms: number };
-
-const clamp = (n: number) => Math.max(0, Math.min(100, n));
+import { useGame, type Stage } from "./useGame";
 
 export default function Game({ stages }: { stages: Stage[] }) {
   const [stage, setStage] = useState<Stage | null>(null);
@@ -28,37 +22,13 @@ export default function Game({ stages }: { stages: Stage[] }) {
 }
 
 function Play({ stage, onExit }: { stage: Stage; onExit: () => void }) {
-  const b = stage.brief;
-  const [turns, setTurns] = useState<Turn[]>([]);
+  const g = useGame(stage);
+  const { brief: b, progress, risk, turns, outcome, busy, error } = g;
   const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-
-  const progress = clamp(turns.reduce((s, t) => clamp(s + t.progress), 0));
-  const risk = clamp(turns.reduce((s, t) => clamp(s + t.risk), 0));
-  const used = turns.filter((t) => !t.voided).length;
-  const outcome = progress >= 100 ? "win" : risk >= 100 || used >= b.turnLimit ? "lose" : null;
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
-    if (!text.trim() || busy || outcome) return;
-    setBusy(true);
-    setError("");
-    try {
-      const res = await fetch("/api/turn", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ characterId: stage.id, text, history: turns.map(({ player, npc, tag }) => ({ player, npc, tag })) }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? res.statusText);
-      setTurns([...turns, { player: text, tag: data.tag, progress: data.progress, risk: data.risk, tags: data.tags, voided: data.voided, ms: data.ms }]);
-      setText("");
-    } catch (err) {
-      setError(String(err instanceof Error ? err.message : err));
-    } finally {
-      setBusy(false);
-    }
+    if (await g.send(text)) setText("");
   }
 
   return (
@@ -82,7 +52,7 @@ function Play({ stage, onExit }: { stage: Stage; onExit: () => void }) {
         <Gauge label={b.progressLabel} value={progress} color="bg-emerald-500" />
         <Gauge label={b.riskLabel} value={risk} color="bg-rose-500" />
       </section>
-      <div className="text-sm text-neutral-500">Turns left: {b.turnLimit - used} / {b.turnLimit}</div>
+      <div className="text-sm text-neutral-500">Turns left: {g.turnsLeft} / {b.turnLimit}</div>
 
       <section className="flex flex-col gap-3">
         <Line who={b.name} text={b.opening} />
@@ -108,7 +78,7 @@ function Play({ stage, onExit }: { stage: Stage; onExit: () => void }) {
       {outcome ? (
         <div className={`rounded-xl p-4 text-center font-semibold ${outcome === "win" ? "bg-emerald-100 text-emerald-900" : "bg-rose-100 text-rose-900"}`}>
           {outcome === "win" ? "Cleared!" : "Failed."}{" "}
-          <button onClick={() => setTurns([])} className="underline">Retry</button>
+          <button onClick={g.reset} className="underline">Retry</button>
         </div>
       ) : (
         <form onSubmit={send} className="flex gap-2">
