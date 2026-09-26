@@ -9,7 +9,7 @@ Sep 26, 2026 · @Seungjun Oh
 Srake is a web game for persuasion training where every sentence you say is scored in real time. Players clear stages by talking a security guard, an investor, or a friend about to go all-in on a coin into changing their mind.
 
 - **Problem**: Persuasion is a skill built through repetition and instant feedback, yet there is no safe place to practice. Existing AI roleplay tools are mostly built for B2B sales teams and sold per seat.
-- **Solution**: Jev judges every utterance against 20–25 research-based rubric items instantly, moving the gauges and the character's facial expression. An OpenAI GPT model handles character dialogue and the post-stage debrief.
+- **Solution**: Jev judges every utterance against 20–25 research-based rubric items instantly, moving the gauges and the character's facial expression. OpenAI GPT-5 nano handles character dialogue and GPT-5 mini the post-stage debrief.
 - **Why Jev**: Each round requires 8–12 utterances × 20+ items judged in real time. A general LLM is too slow and too expensive for this.
 - **Why now**: A System One model (Jev) launched this month, making sentence-level real-time judgment nearly free.
 - **Hackathon goal**: The Gate mode with 3 stages fully playable, The Pitch mode with 1 stage, and one scoring-agreement validation number.
@@ -41,19 +41,19 @@ Each turn has four steps — Speak → Judge → React → Respond — and the g
 flowchart LR
   A[Speak: one player sentence] --> B[Judge: Jev scores 20-25 items in parallel]
   B --> C[React: gauges update + expression change + skill tags]
-  C --> D[Respond: GPT streams character dialogue]
+  C --> D[Respond: LLM streams character dialogue]
   D --> E{Win/lose check}
   E -- continue --> A
-  E -- clear/fail --> F[Debrief: GPT review]
-  B -. low-confidence items .-> G[GPT re-judges]
+  E -- clear/fail --> F[Debrief: LLM review]
+  B -. low-confidence items .-> G[LLM re-judges]
   G -.-> C
 ```
 
 Division of roles:
 
 - **System 1 — Jev**: All judgments. Returns typed options and probabilities. Fast, cheap, and never generates free text.
-- **System 2 — OpenAI GPT**: Character dialogue, end-of-stage debrief, "what you could have said" alternatives, and interpreting creative strategies the rubric doesn't cover.
-- **Cascade rule**: GPT re-judges a core item only when Jev's probability falls between 0.35 and 0.65. Target: under 10% of all judgments escalate to GPT.
+- **System 2 — OpenAI (GPT-5 mini / nano)**: Character dialogue, end-of-stage debrief, "what you could have said" alternatives, and interpreting creative strategies the rubric doesn't cover. Chosen over Claude/Anthropic for lower per-token cost on this high-volume, per-turn workload.
+- **Cascade rule**: The LLM re-judges a core item only when Jev's probability falls between 0.35 and 0.65. Target: under 10% of all judgments escalate to the LLM.
 
 Win/lose structure: every mode has two gauges (progress / risk) and a turn limit. Pushing hard raises both progress and risk, so players constantly trade speed against trust.
 
@@ -79,7 +79,7 @@ Shared character structure:
 
 - **Personality weight vector**: how well each rubric item works on this character (+/−).
 - **Hidden concern**: e.g., the night guard fears getting fired after one more mistake. Players earn big points for uncovering it through questions and resolving it. This rewards listening over talking.
-- **Voice and verbal tics**: fixed in the GPT system prompt.
+- **Voice and verbal tics**: fixed in the dialogue model's system prompt.
 
 Swapping character config on the same engine adds new modes: interviewer, salary negotiation, convincing parents, English debate. The marginal cost of a new mode is content writing only.
 
@@ -152,9 +152,9 @@ Each utterance is judged on about 25 items across 4 layers. Items are many, but 
 | C4 | Did the player use a short story or scene? | Yes/No |
 | C5 | Did the player use tension-breaking humor? | Yes/No |
 | C6 | Action on the hidden concern? (probing question, direct resolution, unrelated) | Choice |
-| C7 | Principle tag is "none" but the expected effect is positive? → flag as "unclassified creative strategy" for GPT to analyze | Yes/No |
+| C7 | Principle tag is "none" but the expected effect is positive? → flag as "unclassified creative strategy" for the LLM to analyze | Yes/No |
 
-C2's list of common approaches is refreshed weekly from frequent strategies in accumulated play logs. C7 is the safety net that keeps the rubric from missing creativity. GPT names and explains the new strategy; if it recurs, it is promoted to a formal item.
+C2's list of common approaches is refreshed weekly from frequent strategies in accumulated play logs. C7 is the safety net that keeps the rubric from missing creativity. The LLM names and explains the new strategy; if it recurs, it is promoted to a formal item.
 
 ### L4 Risk (all modes)
 
@@ -231,7 +231,7 @@ Anti-gaming design (Goodhart's law):
 
 ### End-of-Session Feedback (LLM)
 
-After each stage, GPT writes a feedback report from the full transcript plus Jev's judgment log for every turn. Jev supplies the numbers; GPT supplies the interpretation.
+After each stage, the LLM (OpenAI, GPT-5 mini) writes a feedback report from the full transcript plus Jev's judgment log for every turn. Jev supplies the numbers; the LLM supplies the interpretation.
 
 - **Verdict**: one line on why the player won or lost.
 - **Best moment**: the strongest line, and which principle made it work on this character.
@@ -311,19 +311,41 @@ UI copy is written in the character's voice. Example loading line from the guard
 
 ## Technical Spec
 
-Keep it simple: one web app with serverless API routes. Most of the cost comes from GPT dialogue, not Jev.
+Keep it simple: one web app with serverless API routes. Most of the cost comes from LLM dialogue, not Jev.
 
 | Layer | Choice | Why |
 | --- | --- | --- |
 | Frontend | Next.js, React, TypeScript, Tailwind | Hackathon speed, easy deploy |
-| Characters and animation | Parametric SVG + Framer Motion | Expression interpolation |
+| Character faces | Parametric SVG (drawn in code, no art assets) + Framer Motion | Expressions track gauges exactly; zero illustration time needed |
 | API | Next.js Route Handlers + SSE streaming | Push judgment first, then dialogue |
 | System 1 | Jev (model: jev-latest) | Judgment |
-| System 2 | OpenAI API (GPT), streaming | Dialogue, feedback report, re-judging |
+| System 2 | OpenAI API — GPT-5 nano for dialogue, GPT-5 mini for the feedback report, streaming | Dialogue, feedback report, re-judging |
 | Storage | Hackathon: stateless API + browser localStorage (no login, no Supabase); later Supabase | Login, history, skill tree |
 | Deploy | Vercel |  |
 
-Jev integration: call `POST https://api.typesafe.ai/v1/systemone` from the Next.js server via the official JS SDK `@typesafe-ai/sdk`. Bundle all questions into one request. In this doc, "Yes/No" items map to Jev's `noul` (0–1), "Choice" to `choice`, and ordered rubrics to `score`. Keep the API key only in the server env var `TYPESAFE_API_KEY`. [Quick start](https://docs.typesafe.ai/introduction/quickstart)
+Jev integration: call `POST https://api.typesafe.ai/v1/systemone` from the Next.js server via the official JS SDK `@typesafe-ai/sdk`. Bundle all questions into one request. In this doc, "Yes/No" items map to Jev's `noul` (0–1), "Choice" to `choice`, and ordered rubrics to `score`. OpenAI integration: the `openai` SDK for dialogue and the feedback report. Keep both API keys only in server env vars: `TYPESAFE_API_KEY` and `OPENAI_API_KEY`. [Jev quick start](https://docs.typesafe.ai/introduction/quickstart)
+
+### Voice Input (Stretch Goal)
+
+Text input is the MVP default: the Enter key is an unambiguous "utterance finished" signal, so the 700ms gauge-reaction budget is easy to hit. Voice is a stretch layer, not a blocker.
+
+The real bottleneck for voice is not STT speed (streaming STT now finalizes in \~150ms) — it's **endpointing**: deciding when a person has actually finished speaking versus paused mid-thought. Real speech is continuous and run-on, not one clean sentence at a time, so pure silence-based auto-VAD is prone to false cutoffs and is hard to tune well in a single hackathon day.
+
+**Chosen approach — two-stage gate, turn-level not sentence-level.** A turn is the player's whole persuasive move, which can be several sentences long — the same unit a text-mode Enter key submits, not one sentence. MVP fallback is push-to-talk: hold the button for the whole turn (not per sentence), release when done. Stretch upgrade removes the button entirely: mic turns on once at stage start and stays on until the stage ends.
+
+**Stack**: OpenAI's realtime streaming STT (`gpt-live-transcribe`, via the Realtime WebSocket API) provides the continuously-updating transcript and includes server-side VAD, so no separate VAD library is needed — one OpenAI key covers STT, dialogue, and the feedback report. Its built-in short-pause signal is stage 1 of the gate; only on a longer pause (\~0.8–1s) does Jev get one `noul` question: "Has the player finished making their point and is waiting for a response, or are they clearly continuing the same point?" A "yes" scores the whole buffered turn (all sentences since the last turn boundary); a "no" keeps buffering. Fastest zero-setup way to prototype the concept: the browser's built-in Web Speech API (free, client-side, Chrome/Edge only) — good for an early proof-of-concept, not the demo build.
+
+| Step | Latency |
+| --- | --- |
+| Local VAD flags a candidate pause | \~instant, no network call |
+| Jev "is this complete?" check | \~70–200ms (one short question) |
+| If complete, full rubric judgment | \~70–500ms |
+| **Total, pause to gauge reaction** | **\~150–700ms** |
+
+Build order note: ship push-to-talk first (guarantees a working demo), then layer the semantic gate on top only if time remains — it is a strictly harder build (two real-time pipelines instead of one, plus Jev's completeness judgment can itself be wrong).
+
+Auto-VAD, hands-free voice (no push-to-talk) is explicitly out of scope for the hackathon — it needs real tuning time to avoid false cutoffs and is a v2 problem, not a v1 one.
+
 
 ### Data Model
 
@@ -338,31 +360,31 @@ Jev integration: call `POST https://api.typesafe.ai/v1/systemone` from the Next.
 2. Server builds the judgment context from character config, last 2 turns, and hidden concern.
 3. Jev judges \~25 items in a single request.
 4. Scoring engine updates gauges → sent first as SSE `judge` event → expression and tags react immediately.
-5. Only core items with confidence 0.35–0.65 go to GPT for re-judging (async, corrected before the next turn).
-6. GPT streams dialogue reflecting updated gauges and personality as SSE `reply`.
-7. On stage end, GPT generates the feedback report from the transcript and judgment log.
+5. Only core items with confidence 0.35–0.65 go to OpenAI (GPT-5 nano) for re-judging (async, corrected before the next turn).
+6. OpenAI (GPT-5 nano) streams dialogue reflecting updated gauges and personality as SSE `reply`.
+7. On stage end, OpenAI (GPT-5 mini) generates the feedback report from the transcript and judgment log.
 
 Latency budget: input → gauge reaction under 700ms; first dialogue token under 1.5s.
 
 ### Cost Estimate (approximate)
 
 - Jev: \~25 items × \~800 input tokens ≈ 20k tokens per turn. At published pricing ($42 per billion input tokens, output free), under \~$0.001 per turn.
-- GPT: one dialogue call per turn, occasional re-judging, one feedback report per stage. This dominates stage cost; calculate exact figures from the chosen model's current pricing.
-- Optimizations: short dialogue, cached character prompts, a small model for dialogue and a larger one for the feedback report.
+- OpenAI: GPT-5 nano ($0.05/$0.40 per 1M tokens) for dialogue, GPT-5 mini ($0.25/$2.00 per 1M tokens) for the feedback report. This dominates stage cost, but is roughly 3–4x cheaper than routing the same calls through Claude Haiku 4.5.
+- No image-generation cost: character faces are drawn as parametric SVG in code, not generated art.
 
 ## MVP Scope and Build Order
 
 The hackathon MVP is The Gate's 3 stages, playable end to end. Everything else happens only if time allows.
 
-- **Must**: The Gate 3 stages, core loop, L1 + L4 + part of L2, two gauges, per-turn timer, parametric SVG face, skill-tag pop-ups, LLM feedback report, star rating.
-- **Should**: The Pitch stage 1 (same engine), combos, Rush timer mode, golden-set agreement number.
-- **Won't**: login/sign-up (no Supabase; the app opens straight to the home screen), voice, live leaderboard, The Intervention (pitch slide only).
+- **Must**: The Gate 3 stages, core loop, L1 + L4 + part of L2, two gauges, per-turn timer, parametric SVG face, skill-tag pop-ups, LLM feedback report, star rating. Text input.
+- **Should**: The Pitch stage 1 (same engine), combos, Rush timer mode, golden-set agreement number, push-to-talk voice input for The Gate (see Voice Input section).
+- **Won't**: login/sign-up (no Supabase; the app opens straight to the home screen), live leaderboard, auto-VAD hands-free voice, The Intervention (pitch slide only).
 
 Build order (done criteria for each step):
 
-1. Connect Jev and OpenAI APIs → one judgment's JSON prints to the console.
+1. Connect Jev and OpenAI APIs → one judgment's JSON and one dialogue completion both print to the console.
 2. Guard 1 rubric items + scoring engine + text UI → gauge numbers move on every utterance.
-3. GPT dialogue + SSE + win/lose + per-turn timer → one full round is playable.
+3. LLM dialogue + SSE + win/lose + per-turn timer → one full round is playable.
 4. SVG face + expression interpolation + tag pop-ups → the face follows the gauges.
 5. Stage 2 and 3 characters + end-of-session feedback report → all 3 stages clearable with a report.
 6. (Should) Pitch mode, Rush mode, golden-set validation.
@@ -375,7 +397,7 @@ Split by files so nobody edits the same thing. Both work on `main`, commit small
 | | A — Game logic | B — Visuals and hit feel |
 | --- | --- | --- |
 | Owns | `src/app/api/*`, `src/lib/*`, `src/app/useGame.ts` | `src/components/*`, `src/app/page.tsx`, `src/app/globals.css`, `public/assets/*` |
-| Builds | GPT dialogue streaming, per-turn timer, win/lose, feedback report API | Design system, home (three doors), stage select, play screen, SVG faces + scenes, all effects in "Visual Tone and Hit Feel" |
+| Builds | GPT-5 nano dialogue streaming, per-turn timer, win/lose, feedback report API | Design system, home (three doors), stage select, play screen, SVG faces + scenes, all effects in "Visual Tone and Hit Feel" |
 | Contract | `useGame()` returns gauges, turns left, time left, latest tags, event (`critical` / `foul` / `repeat` / `none`), NPC text, outcome, `send()` | Components render only from `useGame()` |
 
 - 0:00–0:10 A pushes `useGame()` with the contract above (works with the current text UI).
@@ -394,7 +416,7 @@ Positioning: "Duolingo for persuasion." Rather than entering the crowded B2B sal
 - **Honest moat assessment**: technology alone is weak. The moat to build is personality × strategy × outcome data, a character content library, and community.
 - **Revenue model**: free (3 stages a day) + Pro subscription (unlimited, voice, detailed feedback, custom characters). Then licenses for university career centers, debate clubs, and bootcamps, then corporate onboarding.
 - **Go-to-market**: pilot with Minerva and SF students → short-form challenge via highlight cards ("Can you get past the AI guard?") → Korean job-seeker and English-debate communities → university B2B.
-- **Unit economics caution**: most stage cost is GPT dialogue and the feedback report. Model routing and caching are required so heavy users don't eat the subscription margin.
+- **Unit economics caution**: most stage cost is LLM dialogue and the feedback report. Model routing and caching are required so heavy users don't eat the subscription margin.
 
 Sources: [AI sales roleplay tools comparison (easygenerator)](https://www.easygenerator.com/en/blog/e-learning/best-ai-sales-roleplay-tools/), [AI roleplay platform pricing comparison (DealSpeak)](https://www.dealspeak.ai/blog/best-ai-roleplay-platforms-sales-comparison-2026), [Introducing Jev (TypeSafe AI)](https://typesafe.ai/blog/introducing-system-one-models-and-jev)
 
@@ -403,7 +425,7 @@ Sources: [AI sales roleplay tools comparison (easygenerator)](https://www.easyge
 The biggest risks are looking like a manipulation manual and scoring validity. Both are handled by design.
 
 - **Ethics**: threats and deception are penalized, the feedback report emphasizes ethical persuasion, and The Intervention teaches persuasion without pushing.
-- **Scoring validity**: golden-set validation, calibration checks, GPT re-judging uncertain calls.
+- **Scoring validity**: golden-set validation, calibration checks, LLM re-judging uncertain calls.
 - **Replication**: some classic studies showed smaller effects when replicated. Say "evidence-informed", not "scientifically proven".
 - **Safety**: the R7 filter and moderation block harmful input.
 
