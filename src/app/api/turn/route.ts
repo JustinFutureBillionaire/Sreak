@@ -1,9 +1,10 @@
-import { TypeSafeClient } from "@typesafe-ai/sdk";
 import { getCharacter } from "@/lib/characters";
+import { jev } from "@/lib/clients";
 import { fallbackReply, streamReply } from "@/lib/dialogue";
 import { buildState, questionsFor, score, type Answers, type PastTurn } from "@/lib/engine";
 
-const jev = new TypeSafeClient();
+// Jev + streamed dialogue; well under this, but leave headroom on slow cold starts.
+export const maxDuration = 30;
 const clamp = (n: number) => Math.max(0, Math.min(100, n));
 
 // Stateless: the client sends its own history and gauges each turn, so this works on Vercel without a store.
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
   const started = Date.now();
   let judged;
   try {
-    const { answers } = await jev.systemOne({
+    const { answers } = await jev().systemOne({
       state: buildState(character, history, text),
       questions: questionsFor(character.brief.mode),
     });

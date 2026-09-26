@@ -1,8 +1,8 @@
-import OpenAI from "openai";
+import type OpenAI from "openai";
+import { openai } from "./clients";
 import type { Character } from "./characters";
 import type { PastTurn } from "./engine";
 
-export const openai = new OpenAI();
 export const DIALOGUE_MODEL = "gpt-5-nano";
 export const REPORT_MODEL = "gpt-5-mini";
 
@@ -42,7 +42,7 @@ export function streamReply(c: Character, history: PastTurn[], text: string, moo
     ]),
     { role: "user", content: text },
   ];
-  return openai.chat.completions.create({
+  return openai().chat.completions.create({
     model: DIALOGUE_MODEL,
     reasoning_effort: "minimal",
     max_completion_tokens: 200,

@@ -1,6 +1,8 @@
 import { getCharacter } from "@/lib/characters";
 import { generateReport } from "@/lib/report";
 
+export const maxDuration = 60;
+
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const character = getCharacter(body?.characterId);

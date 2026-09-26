@@ -1,5 +1,6 @@
 import type { Character } from "./characters";
-import { openai, REPORT_MODEL } from "./dialogue";
+import { openai } from "./clients";
+import { REPORT_MODEL } from "./dialogue";
 
 export type Point = { quote: string; note: string };
 export type Report = { strengths: Point[]; improvements: Point[] };
@@ -34,7 +35,7 @@ export async function generateReport(c: Character, outcome: string, turns: Logge
     risk_delta: t.risk,
     judged: t.tags.map((g) => `${g.points > 0 ? "+" : ""}${g.points} ${g.label} (${g.gauge})`),
   }));
-  const res = await openai.chat.completions.create({
+  const res = await openai().chat.completions.create({
     model: REPORT_MODEL,
     reasoning_effort: "minimal",
     response_format: { type: "json_schema", json_schema: { name: "report", strict: true, schema } },

@@ -1,36 +1,21 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sreak
 
-## Getting Started
+Speak and Break: a persuasion-training game. Talk your way past a night guard or win over an investor; every line is judged live by Jev (TypeSafe) and the character answers with GPT-5 nano. Spec: [`docs/PRD.md`](docs/PRD.md).
 
-First, run the development server:
+## Run locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # fill in TYPESAFE_API_KEY and OPENAI_API_KEY
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Voice input uses the browser's speech recognition: Chrome or Edge, on localhost or HTTPS.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deploy to Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. vercel.com/new → import this GitHub repo. Framework preset: Next.js (auto-detected), no other settings.
+2. Environment Variables (Production + Preview): `TYPESAFE_API_KEY`, `OPENAI_API_KEY`.
+3. Deploy. Every push to `main` redeploys.
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The build does not need the keys; the API routes read them on the first request. If a turn fails with "Judge is unavailable", the Jev key is missing or wrong; if the character only says canned lines, the OpenAI key is missing or out of credits (check the function logs in Vercel).
