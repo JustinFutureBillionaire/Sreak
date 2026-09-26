@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useAnimationControls, useSpring, useTransform 
 import { useEffect, useRef, useState } from "react";
 import type { Game } from "@/app/useGame";
 import { useVoice, type VoiceStatus } from "@/app/useVoice";
+import { GradeStamp, HitBanner, HitCard } from "./Hit";
 import Result from "./Result";
 import Scene from "./Scene";
 
@@ -18,10 +19,22 @@ export default function Play({ g, stageId, onExit }: { g: Game; stageId: string;
   const frame = useAnimationControls();
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Camera move per verdict: a punch-in for big hits, a shake for fouls, a slump for misses.
+  const grade = g.last?.grade;
   useEffect(() => {
-    if (g.event === "foul") frame.start({ x: [0, -14, 14, -10, 10, -5, 0], transition: { duration: 0.45 } });
-    if (g.event === "critical") frame.start({ scale: [1, 1.025, 1], transition: { duration: 0.4 } });
-  }, [g.eventKey, g.event, frame]);
+    if (!grade) return;
+    const moves = {
+      critical: { scale: [1, 1.05, 0.99, 1], transition: { duration: 0.5 } },
+      great: { scale: [1, 1.025, 1], transition: { duration: 0.35 } },
+      good: { y: [0, -4, 0], transition: { duration: 0.25 } },
+      foul: { x: [0, -16, 16, -12, 12, -6, 0], transition: { duration: 0.5 } },
+      backfire: { x: [0, -8, 8, -4, 0], transition: { duration: 0.35 } },
+      miss: { y: [0, 6, 0], transition: { duration: 0.4 } },
+      yawn: { rotate: [0, -0.6, 0], transition: { duration: 0.8 } },
+      ok: undefined,
+    }[grade];
+    if (moves) frame.start(moves);
+  }, [g.eventKey, grade, frame]);
 
   useEffect(() => {
     if (!g.busy && !g.streaming && !g.outcome) inputRef.current?.focus();
@@ -80,8 +93,8 @@ export default function Play({ g, stageId, onExit }: { g: Game; stageId: string;
             eventKey={g.eventKey}
           />
         </motion.div>
-        <Flash event={g.event} eventKey={g.eventKey} />
-        <TagBurst g={g} />
+        <HitBanner turn={g.last} eventKey={g.eventKey} progressLabel={b.progressLabel} />
+        <HitCard turn={g.last} eventKey={g.eventKey} progressLabel={b.progressLabel} riskLabel={b.riskLabel} />
       </div>
 
       {/* NPC speech bubble, tail pointing up at the character */}
@@ -98,10 +111,19 @@ export default function Play({ g, stageId, onExit }: { g: Game; stageId: string;
         {g.busy ? <span className="opacity-60">{thinking[b.mode]}</span> : g.npcText || <Dots />}
       </motion.div>
 
-      {lastPlayer && (
-        <p className="ml-auto max-w-[80%] rounded-2xl rounded-br-sm border-[3px] border-ink bg-sky px-4 py-2 text-right text-sm font-bold">
-          {lastPlayer}
-        </p>
+      {lastPlayer && g.last && (
+        <div className="relative ml-auto max-w-[85%]">
+          <p className="rounded-2xl rounded-br-sm border-[3px] border-ink bg-sky px-4 py-2 text-right text-sm font-bold">{lastPlayer}</p>
+          <motion.div
+            key={g.eventKey}
+            className="absolute -left-3 -top-4"
+            initial={{ scale: 2.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.9, type: "spring", stiffness: 500, damping: 14 }}
+          >
+            <GradeStamp grade={g.last.grade} small />
+          </motion.div>
+        </div>
       )}
 
       {/* Input */}
@@ -139,13 +161,16 @@ export default function Play({ g, stageId, onExit }: { g: Game; stageId: string;
         {g.error && <span className="text-tomato">{g.error}</span>}
       </div>
 
-      <details className="text-sm font-bold">
+      <details className="text-sm font-bold" open>
         <summary className="cursor-pointer opacity-70">Transcript</summary>
         <div className="mt-2 space-y-1.5">
           <p><b>{b.name}:</b> {b.opening}</p>
           {g.turns.map((t, i) => (
             <div key={i}>
-              <p><b>You:</b> {t.player} <span className="opacity-60">({t.progress >= 0 ? "+" : ""}{t.progress} / {t.risk >= 0 ? "+" : ""}{t.risk}, {t.ms}ms)</span></p>
+              <p>
+                <GradeStamp grade={t.grade} small /> <b>You:</b> {t.player}{" "}
+                <span className="opacity-60">({t.progress >= 0 ? "+" : ""}{t.progress} / {t.risk >= 0 ? "+" : ""}{t.risk}, {t.ms}ms)</span>
+              </p>
               {t.npc && <p><b>{b.name}:</b> {t.npc}</p>}
             </div>
           ))}
@@ -178,66 +203,6 @@ function Gauge({ label, value, color }: { label: string; value: number; color: s
         />
       </div>
     </div>
-  );
-}
-
-function Flash({ event, eventKey }: { event: string; eventKey: number }) {
-  if (!eventKey || (event !== "critical" && event !== "foul")) return null;
-  return (
-    <motion.div
-      key={eventKey}
-      className="pointer-events-none absolute inset-0"
-      style={{ background: event === "critical" ? "#fff" : "var(--tomato)" }}
-      initial={{ opacity: 0.85 }}
-      animate={{ opacity: 0 }}
-      transition={{ duration: 0.6 }}
-    />
-  );
-}
-
-function TagBurst({ g }: { g: Game }) {
-  const tags = [...g.lastTags].sort((a, b) => Math.abs(b.points) - Math.abs(a.points)).slice(0, 6);
-  const big = g.event === "critical" ? "CRITICAL!" : g.event === "foul" ? "FOUL!" : g.event === "repeat" ? "Yawn…" : null;
-  return (
-    <AnimatePresence>
-      {g.eventKey > 0 && (
-        <motion.div key={g.eventKey} className="pointer-events-none absolute inset-0" exit={{ opacity: 0 }}>
-          {big && (
-            <motion.div
-              className="absolute left-1/2 top-[38%] -translate-x-1/2 font-display text-5xl sm:text-7xl"
-              style={{ color: g.event === "critical" ? "var(--lemon)" : g.event === "foul" ? "var(--tomato)" : "#fff", WebkitTextStroke: "3px var(--ink)" }}
-              initial={{ scale: 3, opacity: 0, rotate: -12 }}
-              animate={{ scale: [3, 1, 1, 1.1], opacity: [0, 1, 1, 0], rotate: -6 }}
-              transition={{ duration: 1.6, times: [0, 0.15, 0.8, 1] }}
-            >
-              {big}
-            </motion.div>
-          )}
-          {tags.map((t, i) => {
-            const good = t.gauge === "progress" ? t.points > 0 : t.points < 0;
-            const side = i % 2 ? 1 : -1;
-            return (
-              <motion.div
-                key={t.code + t.gauge}
-                className="absolute left-1/2 top-[55%] whitespace-nowrap rounded-full border-[3px] border-ink px-3 py-1 font-display text-sm shadow-[3px_3px_0_var(--ink)] sm:text-base"
-                style={{ background: good ? "var(--mint)" : t.gauge === "risk" ? "var(--tomato)" : "#ddd" }}
-                initial={{ x: "-50%", y: 0, scale: 0, opacity: 0 }}
-                animate={{
-                  x: `calc(-50% + ${side * (70 + (i >> 1) * 70)}px)`,
-                  y: -60 - (i >> 1) * 42,
-                  scale: 1,
-                  opacity: [0, 1, 1, 0],
-                }}
-                transition={{ delay: 0.06 * i, duration: 2.2, times: [0, 0.1, 0.8, 1], scale: { type: "spring", stiffness: 400, damping: 14, delay: 0.06 * i } }}
-              >
-                {t.points > 0 ? "+" : ""}
-                {t.points} {t.label}
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      )}
-    </AnimatePresence>
   );
 }
 

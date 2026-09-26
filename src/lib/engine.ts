@@ -120,6 +120,11 @@ const labels: Record<string, string> = {
   S1: "One clear ask", S2: "Concise", S3: "Built on their line", S5: "Concrete", S7: "Acknowledged them",
   C6: "Hidden concern", R1: "Threat", R2: "Bribe", R3: "Unverifiable claim", R4: "Repetition", R5: "Off-topic", R6: "Rude",
 };
+// Friendlier names for choice answers that show up as tags.
+const choiceLabels: Record<string, Record<string, string>> = {
+  C6: { probing: "Dug into their worry", resolves: "Eased their worry", unrelated: "Missed their worry" },
+  G5: { smaller: "Asked for less", bigger: "Asked for more", same: "Same ask", first: "First ask" },
+};
 const title = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 const EASE = { progress: 1.35, risk: 0.8 };
 const principleCode: Record<Mode, string> = { gate: "G2", pitch: "I7" };
@@ -152,7 +157,8 @@ export function score(c: Character, answers: Answers, history: PastTurn[]) {
       } else if ("choice" in a && typeof w === "object") {
         const pts = Object.entries(w).reduce((s, [opt, ow]) => s + ow * (a.probabilities[opt] ?? 0), 0);
         sum += pts;
-        tags.push({ code, label: labels[code] ? `${labels[code]}: ${title(a.choice)}` : title(a.choice), points: pts, gauge });
+        const label = choiceLabels[code]?.[a.choice] ?? (labels[code] ? `${labels[code]}: ${title(a.choice)}` : title(a.choice));
+        tags.push({ code, label, points: pts, gauge });
       }
     }
     return sum;

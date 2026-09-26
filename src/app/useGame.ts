@@ -8,12 +8,26 @@ import type { Report } from "@/lib/report";
 
 export type { GameEvent, Report };
 export type Stage = { id: string; brief: Brief };
+// How one line landed. Every turn gets one, so every line has a visible verdict.
+export type Grade = "critical" | "great" | "good" | "ok" | "miss" | "backfire" | "foul" | "yawn";
+export function gradeOf(t: { progress: number; risk: number; event: GameEvent; voided: boolean }): Grade {
+  if (t.voided || t.event === "foul") return "foul";
+  if (t.event === "critical") return "critical";
+  if (t.event === "repeat") return "yawn";
+  if (t.progress < 0 || t.risk >= 15) return "backfire";
+  if (t.progress >= 30) return "great";
+  if (t.progress >= 15) return "good";
+  if (t.progress >= 5) return "ok";
+  return "miss";
+}
+
 export type Turn = PastTurn & {
   progress: number;
   risk: number;
   tags: Tag[];
   voided: boolean;
   event: GameEvent;
+  grade: Grade;
   ms: number;
 };
 
@@ -101,7 +115,7 @@ export function useGame(stage: Stage, sessionSeconds: number) {
           const msg = JSON.parse(line);
           if (msg.type === "judge") {
             // Gauges and face react now; dialogue follows.
-            setTurns((ts) => [...ts, { player: text, npc: "", tag: msg.tag, progress: msg.progress, risk: msg.risk, tags: msg.tags, voided: msg.voided, event: msg.event, ms: msg.ms }]);
+            setTurns((ts) => [...ts, { player: text, npc: "", tag: msg.tag, progress: msg.progress, risk: msg.risk, tags: msg.tags, voided: msg.voided, event: msg.event, grade: gradeOf(msg), ms: msg.ms }]);
             setBusy(false);
             setStreaming(true);
           } else if (msg.type === "reply") {
@@ -138,6 +152,7 @@ export function useGame(stage: Stage, sessionSeconds: number) {
     turns,
     lastTags: last?.tags ?? [],
     event: last?.event ?? ("none" as GameEvent),
+    last, // the last judged turn: grade, deltas, tags
     eventKey: turns.length, // changes every turn, use as a React key to replay effects
     npcText: last ? last.npc ?? "" : b.opening,
     busy, // Jev is judging
