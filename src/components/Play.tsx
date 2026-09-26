@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, useAnimationControls, useSpring, useTransform } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import type { Game } from "@/app/useGame";
+import { useVoice, type VoiceStatus } from "@/app/useVoice";
 import Result from "./Result";
 import Scene from "./Scene";
 
@@ -26,17 +27,26 @@ export default function Play({ g, stageId, onExit }: { g: Game; stageId: string;
     if (!g.busy && !g.streaming && !g.outcome) inputRef.current?.focus();
   }, [g.busy, g.streaming, g.outcome]);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const line = text;
+  async function sendLine(line: string) {
     setText("");
     if (!(await g.send(line))) setText(line);
+  }
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    sendLine(text);
   }
 
   const lastPlayer = g.turns.at(-1)?.player;
   const lowTime = g.timeLeft <= 8;
   const nervous = Math.max(1 - g.turnsLeft / b.turnLimit, lowTime ? 1 - g.timeLeft / 8 : 0);
   const locked = g.busy || g.streaming || !!g.outcome;
+  const voice = useVoice({
+    characterId: stageId,
+    lastLine: g.npcText,
+    locked,
+    onText: setText,
+    onTurn: sendLine,
+  });
 
   return (
     <motion.div animate={frame} className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-3 p-3 sm:p-5">
@@ -94,13 +104,14 @@ export default function Play({ g, stageId, onExit }: { g: Game; stageId: string;
       {/* Input */}
       <form onSubmit={submit} className="flex items-center gap-3">
         <TimerRing left={g.timeLeft} total={b.turnSeconds} paused={locked} />
+        <MicButton status={voice.status} onClick={voice.toggle} />
         <input
           ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           maxLength={500}
           disabled={!!g.outcome}
-          placeholder={g.busy ? "Judging…" : `Say something to ${b.name.split(" ")[0]}`}
+          placeholder={g.busy ? "Judging…" : voice.status === "listening" ? "Listening… just talk" : `Say something to ${b.name.split(" ")[0]}`}
           aria-label="Your line"
           className="sticker min-w-0 flex-1 bg-paper px-4 py-3 text-base font-bold placeholder:text-ink/40 focus:outline-none"
         />
@@ -110,6 +121,7 @@ export default function Play({ g, stageId, onExit }: { g: Game; stageId: string;
       </form>
       <div className="flex items-center justify-between text-sm font-extrabold">
         <Pips left={g.turnsLeft} total={b.turnLimit} />
+        <VoiceNote status={voice.status} />
         {g.error && <span className="text-tomato">{g.error}</span>}
       </div>
 
@@ -264,4 +276,41 @@ function Dots() {
       ))}
     </span>
   );
+}
+
+function MicButton({ status, onClick }: { status: VoiceStatus; onClick: () => void }) {
+  const live = status === "listening" || status === "checking";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={live}
+      aria-label={live ? "Turn microphone off" : "Talk instead of typing"}
+      className="btn relative grid h-14 w-14 shrink-0 place-items-center rounded-full"
+      style={{ background: live ? "var(--tomato)" : "var(--paper)" }}
+    >
+      {live && (
+        <motion.span
+          className="absolute inset-0 rounded-full border-[3px] border-tomato"
+          animate={{ scale: [1, 1.5], opacity: [0.8, 0] }}
+          transition={{ repeat: Infinity, duration: 1.1 }}
+        />
+      )}
+      <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="var(--ink)" strokeWidth={2.4} strokeLinecap="round">
+        <rect x={9} y={3} width={6} height={11} rx={3} fill={live ? "#fff" : "var(--lemon)"} />
+        <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+      </svg>
+    </button>
+  );
+}
+
+function VoiceNote({ status }: { status: VoiceStatus }) {
+  const text = {
+    off: "",
+    listening: "Mic on. Pause when you're done and Jev decides if you've finished.",
+    checking: "Jev is checking if you're done…",
+    unsupported: "Voice needs Chrome or Edge. Typing still works.",
+    blocked: "Mic is blocked. Allow it in the address bar, then tap the mic again.",
+  }[status];
+  return text ? <span className="text-right opacity-80">{text}</span> : null;
 }

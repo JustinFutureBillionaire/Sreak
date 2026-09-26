@@ -84,8 +84,8 @@ export default function Result({ g, onExit }: { g: Game; onExit: () => void }) {
                 <q className="font-bold">{g.report.bestMoment.quote}</q>
                 <p className="mt-1">{g.report.bestMoment.why}</p>
               </Card>
-              {g.report.mistakes.map((m) => (
-                <Card key={m.quote} color="var(--bubble)" title="Could be sharper">
+              {g.report.mistakes.map((m, i) => (
+                <Card key={i} color="var(--bubble)" title="Could be sharper">
                   <q className="font-bold">{m.quote}</q>
                   <p className="mt-1">{m.why}</p>
                   <p className="mt-1.5 rounded-lg bg-white/70 px-2 py-1">

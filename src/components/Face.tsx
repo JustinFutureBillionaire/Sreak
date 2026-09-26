@@ -94,8 +94,8 @@ export default function Face({ look, progress, risk, nervous = 0, looking, event
       <motion.g animate={eyes} style={{ transformBox: "fill-box", transformOrigin: "center" }}>
         {[74, 126].map((cx) => (
           <g key={cx}>
-            <motion.ellipse cx={cx} cy={102} rx={13} fill="#fff" stroke={INK} strokeWidth={4} animate={{ ry: eyeRy }} transition={spring} />
-            <motion.circle cx={cx} cy={102} r={5.5} fill={INK} animate={{ cy: 102 + pupilY, r: Math.min(5.5, eyeRy - 1) }} transition={spring} />
+            <motion.ellipse cx={cx} cy={102} rx={13} ry={eyeRy} initial={false} fill="#fff" stroke={INK} strokeWidth={4} animate={{ ry: eyeRy }} transition={spring} />
+            <motion.circle cx={cx} cy={102} r={5.5} initial={false} fill={INK} animate={{ cy: 102 + pupilY, r: Math.min(5.5, eyeRy - 1) }} transition={spring} />
           </g>
         ))}
       </motion.g>
@@ -113,7 +113,7 @@ export default function Face({ look, progress, risk, nervous = 0, looking, event
       {look.beard && <path d="M40 118 Q44 176 100 182 Q156 176 160 118 Q150 160 100 162 Q50 160 40 118 Z" fill={look.hairColor} stroke={INK} strokeWidth={4} />}
 
       {/* mouth: a curve that smiles or frowns, a grin near 100, a yawn on repetition */}
-      <motion.path fill="none" stroke={INK} strokeWidth={6} strokeLinecap="round"
+      <motion.path initial={false} fill="none" stroke={INK} strokeWidth={6} strokeLinecap="round"
         animate={{ d: `M78 150 Q100 ${150 + curve * 2} 122 150`, opacity: grin ? 0 : 1 }} transition={spring} />
       <motion.path d="M72 144 Q100 192 128 144 Z" fill={INK} stroke={INK} strokeWidth={4} strokeLinejoin="round"
         animate={{ opacity: grin ? 1 : 0, scale: grin ? 1 : 0.6 }} style={{ transformBox: "fill-box", transformOrigin: "top" }} transition={spring} />
