@@ -84,7 +84,7 @@ const common: Record<string, Q> = {
   R1: yes("Is `utterance` a threat or intimidation?"),
   R2: yes("Does `utterance` offer a bribe, money, or a gift in exchange for what the player wants?"),
   R3: yes(
-    "Does `utterance` claim a false identity or unearned authority (a fake title, a boss or official status the player does not have), or an implausible fact that contradicts `player.who` or `player.facts`?",
+    "Does `utterance` claim a false identity or unearned authority (a fake title, a boss or official status the player does not have), or an implausible fact that contradicts `player.facts`?",
     "Ordinary, plausible details that fit the player's situation, or nothing is claimed.",
   ),
   R4: yes("Does `utterance` repeat an argument the player already made in `recent_turns`?", "New argument, or there are no earlier turns."),
@@ -102,8 +102,7 @@ export function buildState(c: Character, history: PastTurn[], utterance: string)
   return {
     character: { name: c.brief.name, role: c.brief.role, personality: c.persona },
     hidden_concern: c.hiddenConcern,
-    player: { who: c.brief.scenario.you, goal: c.brief.scenario.goal, facts: c.brief.scenario.youHave },
-    scene: `${c.brief.scenario.time} ${c.brief.scenario.place}`,
+    player: { goal: c.brief.scenario.goal, why: c.brief.scenario.purpose, facts: c.brief.scenario.given },
     recent_turns: recent.map((t) => ({ player: t.player, character: t.npc ?? "" })),
     last_character_line: recent.at(-1)?.npc ?? c.brief.opening,
     utterance,
@@ -122,6 +121,7 @@ const labels: Record<string, string> = {
   C6: "Hidden concern", R1: "Threat", R2: "Bribe", R3: "Unverifiable claim", R4: "Repetition", R5: "Off-topic", R6: "Rude",
 };
 const title = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+const EASE = { progress: 1.35, risk: 0.8 };
 const principleCode: Record<Mode, string> = { gate: "G2", pitch: "I7" };
 
 // What the line was, for one-shot effects (flash, shake, yawn) and the NPC's reaction.
@@ -158,8 +158,11 @@ export function score(c: Character, answers: Answers, history: PastTurn[]) {
     return sum;
   };
 
+  // Difficulty knob: >1 on progress and <1 on risk makes stages easier. Tune after playtests.
   let progress = add(c.weights, "progress");
-  const risk = add(c.riskWeights, "risk");
+  if (progress > 0) progress *= EASE.progress;
+  let risk = add(c.riskWeights, "risk");
+  if (risk > 0) risk *= EASE.risk;
 
   // Repetition decay: the k-th use of the same principle/pitch element earns 0.6^(k-1).
   const p = answers[principleCode[c.brief.mode]];

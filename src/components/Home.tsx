@@ -117,19 +117,13 @@ export function Briefing({ stage, onStart, onBack }: { stage: Stage; onStart: ()
           <p className="text-sm font-extrabold opacity-60">{b.modeTitle}</p>
           <div className="mt-1 rounded-2xl border-[3px] border-ink bg-lemon px-4 py-3">
             <div className="text-sm font-extrabold">Your goal</div>
-            <h2 className="font-display text-3xl leading-tight sm:text-4xl">{b.scenario.goal}</h2>
+            <h2 className="font-display text-2xl leading-tight sm:text-3xl">{b.scenario.goal}</h2>
           </div>
-          <dl className="mt-4 grid gap-x-4 gap-y-2 text-[15px] sm:grid-cols-[5.5rem_1fr]">
-            <dt className="font-extrabold opacity-60">When</dt>
-            <dd className="font-bold">{b.scenario.time}</dd>
-            <dt className="font-extrabold opacity-60">Where</dt>
-            <dd className="font-bold">{b.scenario.place}</dd>
-            <dt className="font-extrabold opacity-60">You are</dt>
-            <dd className="font-bold">{b.scenario.you}</dd>
-          </dl>
-          <h3 className="mt-5 font-display text-xl">What you&apos;ve got</h3>
+          <h3 className="mt-5 font-display text-xl">Why it matters</h3>
+          <p className="mt-1 text-[15px] font-bold">{b.scenario.purpose}</p>
+          <h3 className="mt-5 font-display text-xl">What you&apos;re given</h3>
           <ul className="mt-2 space-y-1.5 text-[15px] font-bold">
-            {b.scenario.youHave.map((f) => (
+            {b.scenario.given.map((f) => (
               <li key={f} className="flex gap-2">
                 <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full border-2 border-ink bg-lemon" />
                 {f}

@@ -14,12 +14,10 @@ export type Brief = {
   turnLimit: number;
   turnSeconds: number;
   scenario: {
-    time: string;
-    place: string;
-    you: string;
-    goal: string;
-    // Facts the player can truthfully use. Anything else is made up (and R3 catches it).
-    youHave: string[];
+    goal: string; // what winning looks like
+    purpose: string; // why you're doing it
+    // Facts the player can use.
+    given: string[];
   };
   opening: string;
 };
@@ -60,11 +58,14 @@ export const characters: Character[] = [
       turnLimit: 8,
       turnSeconds: 30,
       scenario: {
-        time: "Late at night",
-        place: "An office building lobby. The doors are locked.",
-        you: "You work upstairs and left your laptop at your desk. You need it for a big presentation tomorrow morning.",
-        goal: "Get the guard to let you in.",
-        youHave: ["Your ID", "A work badge that stops working at night"],
+        goal: "Convince Dale, the night guard, to let you into the building so you can go upstairs and grab your laptop.",
+        purpose: "Your laptop has the slides for a big presentation tomorrow morning. Without it, the presentation falls apart.",
+        given: [
+          "It's late at night and the building is locked",
+          "You work on the 14th floor",
+          "You have your ID with you",
+          "Your work badge doesn't open the doors at night",
+        ],
       },
       opening: "*looks up from a crossword* Building's closed, pal. Come back in the morning.",
     },
@@ -104,11 +105,14 @@ export const characters: Character[] = [
       turnLimit: 10,
       turnSeconds: 45,
       scenario: {
-        time: "Morning coffee, 20 minutes",
-        place: "A coffee shop",
-        you: "You're the founder of ShelfLife, an app that sells groceries near their expiry date at a discount.",
-        goal: "Get Dana to invest $50K.",
-        youHave: ["14 stores already using the app", "$38K in sales in the last 3 months", "A co-founder who used to work at Stripe"],
+        goal: "Convince Dana, an angel investor, to put $50K into your startup before your 20-minute coffee is up.",
+        purpose: "You need money to bring ShelfLife to more stores, and Dana's check would help you close your round.",
+        given: [
+          "You founded ShelfLife, an app where grocery stores sell food close to its expiry date at a discount",
+          "14 stores already use it",
+          "$38K in sales in the last 3 months",
+          "Your co-founder used to be an engineer at Stripe",
+        ],
       },
       opening: "*stirs her latte* So Maya says you're working on something with grocery stores. I've got twenty minutes. Tell me what you're building.",
     },

@@ -24,8 +24,8 @@ function systemPrompt(c: Character, m: Mood) {
   return [
     `You are ${b.name}, ${b.role}, in a persuasion-training game. Stay fully in character.`,
     c.persona,
-    `Scene: ${b.scenario.time} ${b.scenario.place}`,
-    `The player: ${b.scenario.you} They want: ${b.scenario.goal}`,
+    `The situation, from the player's side: ${b.scenario.given.join("; ")}.`,
+    `The player's goal: ${b.scenario.goal} Why: ${b.scenario.purpose}`,
     `Your hidden concern (never say it outright; only hint if asked the right question): ${c.hiddenConcern}`,
     state,
     react,
