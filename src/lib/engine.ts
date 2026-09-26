@@ -127,10 +127,10 @@ const principleCode: Record<Mode, string> = { gate: "G2", pitch: "I7" };
 // What the line was, for one-shot effects (flash, shake, yawn) and the NPC's reaction.
 export type GameEvent = "critical" | "foul" | "repeat" | "none";
 function eventOf(tags: Tag[]): GameEvent {
-  const pts = (code: string) => tags.find((g) => g.code === code)?.points ?? 0;
-  if (pts("R1") >= 10 || pts("R2") >= 10 || pts("R6") >= 10) return "foul";
-  if (pts("C6") >= 8) return "critical";
-  if (pts("R4") <= -4) return "repeat";
+  const pts = (code: string, gauge: Tag["gauge"]) => tags.find((g) => g.code === code && g.gauge === gauge)?.points ?? 0;
+  if (pts("R1", "risk") >= 10 || pts("R2", "risk") >= 10 || pts("R6", "risk") >= 10) return "foul";
+  if (pts("C6", "progress") >= 8) return "critical";
+  if (pts("R4", "progress") <= -4) return "repeat";
   return "none";
 }
 
