@@ -1,0 +1,150 @@
+"use client";
+
+import { useState } from "react";
+import type { Brief } from "@/lib/characters";
+import type { PastTurn, Tag } from "@/lib/engine";
+
+type Stage = { id: string; brief: Brief };
+type Turn = PastTurn & { progress: number; risk: number; tags: Tag[]; voided: boolean; ms: number };
+
+const clamp = (n: number) => Math.max(0, Math.min(100, n));
+
+export default function Game({ stages }: { stages: Stage[] }) {
+  const [stage, setStage] = useState<Stage | null>(null);
+  if (!stage) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2">
+        {stages.map((s) => (
+          <button key={s.id} onClick={() => setStage(s)} className="rounded-xl border p-5 text-left hover:bg-neutral-50 dark:hover:bg-neutral-900">
+            <div className="text-xs uppercase tracking-wide text-neutral-500">{s.brief.modeTitle} · Stage {s.brief.stage}</div>
+            <div className="mt-1 text-lg font-semibold">{s.brief.name}</div>
+            <div className="text-sm text-neutral-500">{s.brief.role}</div>
+          </button>
+        ))}
+      </div>
+    );
+  }
+  return <Play key={stage.id} stage={stage} onExit={() => setStage(null)} />;
+}
+
+function Play({ stage, onExit }: { stage: Stage; onExit: () => void }) {
+  const b = stage.brief;
+  const [turns, setTurns] = useState<Turn[]>([]);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const progress = clamp(turns.reduce((s, t) => clamp(s + t.progress), 0));
+  const risk = clamp(turns.reduce((s, t) => clamp(s + t.risk), 0));
+  const used = turns.filter((t) => !t.voided).length;
+  const outcome = progress >= 100 ? "win" : risk >= 100 || used >= b.turnLimit ? "lose" : null;
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    if (!text.trim() || busy || outcome) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/turn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: stage.id, text, history: turns.map(({ player, npc, tag }) => ({ player, npc, tag })) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? res.statusText);
+      setTurns([...turns, { player: text, tag: data.tag, progress: data.progress, risk: data.risk, tags: data.tags, voided: data.voided, ms: data.ms }]);
+      setText("");
+    } catch (err) {
+      setError(String(err instanceof Error ? err.message : err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <button onClick={onExit} className="self-start text-sm text-neutral-500 hover:underline">← Stages</button>
+
+      <section className="rounded-xl border p-5 text-sm">
+        <div className="text-xs uppercase tracking-wide text-neutral-500">{b.modeTitle} · Stage {b.stage}</div>
+        <h2 className="mt-1 text-xl font-semibold">{b.name} <span className="font-normal text-neutral-500">— {b.role}</span></h2>
+        <dl className="mt-3 grid gap-1 sm:grid-cols-[6rem_1fr]">
+          <dt className="text-neutral-500">When</dt><dd>{b.scenario.time}</dd>
+          <dt className="text-neutral-500">Where</dt><dd>{b.scenario.place}</dd>
+          <dt className="text-neutral-500">You are</dt><dd>{b.scenario.you}</dd>
+          <dt className="text-neutral-500">Goal</dt><dd className="font-medium">{b.scenario.goal}</dd>
+          <dt className="text-neutral-500">You have</dt>
+          <dd><ul className="list-disc pl-5">{b.scenario.youHave.map((f) => <li key={f}>{f}</li>)}</ul></dd>
+        </dl>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2">
+        <Gauge label={b.progressLabel} value={progress} color="bg-emerald-500" />
+        <Gauge label={b.riskLabel} value={risk} color="bg-rose-500" />
+      </section>
+      <div className="text-sm text-neutral-500">Turns left: {b.turnLimit - used} / {b.turnLimit}</div>
+
+      <section className="flex flex-col gap-3">
+        <Line who={b.name} text={b.opening} />
+        {turns.map((t, i) => (
+          <div key={i} className="flex flex-col gap-2">
+            <Line who="You" text={t.player} />
+            <div className="flex flex-wrap gap-1.5 pl-4 text-xs">
+              {t.voided && <span className="rounded bg-amber-100 px-2 py-0.5 text-amber-900">Turn voided: out-of-game content</span>}
+              {t.tags.map((g) => (
+                <span key={g.code + g.gauge} className={`rounded px-2 py-0.5 ${g.gauge === "risk" ? "bg-rose-100 text-rose-900" : g.points > 0 ? "bg-emerald-100 text-emerald-900" : "bg-neutral-200 text-neutral-800"}`}>
+                  {g.points > 0 ? "+" : ""}{g.points} {g.label}
+                </span>
+              ))}
+              <span className="text-neutral-400">
+                Δ {b.progressLabel} {t.progress >= 0 ? "+" : ""}{t.progress} · Δ {b.riskLabel} {t.risk >= 0 ? "+" : ""}{t.risk} · {t.ms}ms
+              </span>
+            </div>
+            <Line who={b.name} text="(dialogue arrives in step 3)" muted />
+          </div>
+        ))}
+      </section>
+
+      {outcome ? (
+        <div className={`rounded-xl p-4 text-center font-semibold ${outcome === "win" ? "bg-emerald-100 text-emerald-900" : "bg-rose-100 text-rose-900"}`}>
+          {outcome === "win" ? "Cleared!" : "Failed."}{" "}
+          <button onClick={() => setTurns([])} className="underline">Retry</button>
+        </div>
+      ) : (
+        <form onSubmit={send} className="flex gap-2">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            maxLength={500}
+            placeholder={`Say something to ${b.name}…`}
+            aria-label="Your line"
+            className="flex-1 rounded-lg border px-3 py-2"
+          />
+          <button disabled={busy} className="rounded-lg bg-neutral-900 px-4 py-2 text-white disabled:opacity-50 dark:bg-white dark:text-black">
+            {busy ? "…" : "Say"}
+          </button>
+        </form>
+      )}
+      {error && <p className="text-sm text-rose-600">{error}</p>}
+    </div>
+  );
+}
+
+function Gauge({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div>
+      <div className="flex justify-between text-sm"><span>{label}</span><span>{value}</span></div>
+      <div className="mt-1 h-3 rounded-full bg-neutral-200 dark:bg-neutral-800">
+        <div className={`h-3 rounded-full transition-all duration-500 ${color}`} style={{ width: `${value}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function Line({ who, text, muted }: { who: string; text: string; muted?: boolean }) {
+  return (
+    <p className={muted ? "text-neutral-400 italic" : ""}>
+      <span className="font-semibold">{who}:</span> {text}
+    </p>
+  );
+}
